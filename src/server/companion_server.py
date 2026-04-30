@@ -125,6 +125,11 @@ class CompanionServer:
         self.brain = None
         self._brain_prompt = self.char_manager.active.personality if self.char_manager.active else self._load_personality(character_dir)
 
+        # Inject Hermes memory into brain prompt so companion knows the user and environment
+        memory_text = self._load_user_memory()
+        if memory_text:
+            self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
+
         # Default: route through hermes's API server
         self._llm_config = {
             "base_url": self._hermes_api_url,
@@ -834,6 +839,39 @@ class CompanionServer:
             "model": selected_model,
         }
 
+    def _load_user_memory(self) -> str:
+        """Read Hermes memory files for companion context.
+
+        Reads USER.md and MEMORY.md from Hermes home and returns
+        a formatted string for injection into the brain prompt.
+        Both files are bounded (<2KB each) and maintained by Hermes.
+        Returns empty string if neither file exists or Hermes home is empty.
+        """
+        from pathlib import Path
+        hermes_home = Path(getattr(self, "hermes_home", Path.home() / ".hermes"))
+        memories_dir = hermes_home / "memories"
+        parts = []
+
+        user_path = memories_dir / "USER.md"
+        if user_path.exists():
+            try:
+                text = user_path.read_text(encoding="utf-8").strip()
+                if text:
+                    parts.append(f"About the operator:\n{text[:1500]}")
+            except Exception:
+                pass
+
+        memory_path = memories_dir / "MEMORY.md"
+        if memory_path.exists():
+            try:
+                text = memory_path.read_text(encoding="utf-8").strip()
+                if text:
+                    parts.append(f"Environment notes:\n{text[:1500]}")
+            except Exception:
+                pass
+
+        return "\n\n".join(parts) if parts else ""
+
     async def _generate_quip(self, context: str, reaction_kind: str = "generic") -> dict:
         """Generate a quip via LLM. Returns {quip, expression}.
 
@@ -1302,6 +1340,9 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             char = self.char_manager.active
             if char:
                 self._brain_prompt = char.personality
+                memory_text = self._load_user_memory()
+                if memory_text:
+                    self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
                 if char.voice_ref_audio:
                     self._tts_config["ref_audio"] = char.voice_ref_audio
                 self.anim.mouth_open_threshold = char.mouth_open_threshold
@@ -1344,6 +1385,9 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             self._manual_expression_cooldown = 0
 
         self._brain_prompt = active_char.personality
+        memory_text = self._load_user_memory()
+        if memory_text:
+            self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
         self._tts_config["engine"] = active_char.voice_engine
         self._tts_config["speed"] = active_char.voice_settings.get(
             "speed",
