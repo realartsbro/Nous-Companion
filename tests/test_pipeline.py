@@ -45,6 +45,13 @@ APPROVAL_FALSE = [
     "Let me know if you need anything else.",
     "I need you to check the output when you have a moment.",
     "I'll need you to verify this later.",
+    # Completed approvals — should NOT trigger a pending-approval reaction
+    "User approved the changes.",
+    "Approved for this session.",
+    "Approved.",
+    "Approval granted.",
+    "approve all confirmed.",
+    "I have approved this operation.",
 ]
 
 
