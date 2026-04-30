@@ -81,6 +81,54 @@ def _detect_windows_wsl_hermes_home() -> Path | None:
     return None
 
 
+def _unc_to_linux_path(unc_path: str) -> str:
+    """Convert a Windows UNC WSL path to Linux format for display.
+
+    Example:  \\\\wsl.localhost\\Ubuntu\\home\\will\\.hermes
+           ->  /home/will/.hermes
+    """
+    import re
+    m = re.match(
+        r'^\\\\wsl(?:\.localhost|\$)\\([^\\]+)\\(.*)$',
+        unc_path,
+    )
+    if m:
+        return '/' + m.group(2).replace('\\', '/')
+    return unc_path
+
+
+def _linux_path_to_unc(linux_path: str) -> str | None:
+    """Convert a Linux-style path to a WSL UNC path on Windows.
+
+    Returns None when the caller is not on Windows, when WSL is
+    unavailable, or when the resulting UNC path doesn't exist.
+    """
+    if os.name != "nt":
+        return None
+    # Normalise to a rooted Windows path
+    win_path = linux_path.replace('/', '\\')
+    if not win_path.startswith('\\'):
+        return None
+    try:
+        proc = subprocess.run(
+            ["wsl.exe", "sh", "-lc", "printf '%s' \"$WSL_DISTRO_NAME\""],
+            capture_output=True, text=True, timeout=5,
+        )
+        distro = proc.stdout.strip()
+        if not distro:
+            return None
+    except Exception:
+        return None
+    suffix = win_path.lstrip('\\')
+    unc = f"\\\\wsl.localhost\\{distro}\\{suffix}"
+    try:
+        if Path(unc).exists():
+            return unc
+    except OSError:
+        return None
+    return None
+
+
 def detect_default_hermes_home() -> Path:
     """Best-effort Hermes home auto-detection for the current platform."""
     local_default = Path.home() / ".hermes"
@@ -107,7 +155,15 @@ def resolve_hermes_home(override: str | Path | None = None) -> Path:
         or runtime_overrides.get("hermes_home")
     )
     if candidate:
-        return Path(candidate).expanduser()
+        p = Path(candidate).expanduser()
+        # On Windows, a Linux-style path like /home/will/.hermes does not
+        # resolve to the real WSL location without UNC conversion.  If it
+        # doesn't exist, try converting to the WSL UNC path.
+        if os.name == "nt" and not p.exists():
+            unc = _linux_path_to_unc(str(candidate))
+            if unc:
+                return Path(unc)
+        return p
     return detect_default_hermes_home()
 
 
@@ -314,7 +370,7 @@ TTS_PROVIDER_META: dict[str, tuple[str, str | None]] = {
     "kittentts":   ("KittenTTS",         None),              # import kittentts
 }
 
-# Map Hermes config provider names → our engine IDs
+# Map Hermes config provider names -> our engine IDs
 _HERMES_PROVIDER_TO_ENGINE_ID: dict[str, str] = {
     "edge":      "edge-tts",
     "omnivoice": "omnivoice",

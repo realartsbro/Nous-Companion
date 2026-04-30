@@ -31,6 +31,7 @@ import websockets
 from compositor.cutout_compositor import CutoutCompositor
 from compositor.animation_controller import AnimationController
 from hermes_runtime import (
+    _unc_to_linux_path,
     detect_default_hermes_home,
     get_api_server_key,
     get_api_server_url,
@@ -438,8 +439,8 @@ class CompanionServer:
         overrides = load_runtime_overrides()
         detected_home = detect_default_hermes_home()
         return {
-            "hermes_home": str(self.hermes_home),
-            "detected_hermes_home": str(detected_home),
+            "hermes_home": _unc_to_linux_path(str(self.hermes_home)),
+            "detected_hermes_home": _unc_to_linux_path(str(detected_home)),
             "hermes_config_path": str(self._hermes_config_path),
             "hermes_config_found": self._hermes_config_path.exists(),
             "models_cache_path": str(self._hermes_models_cache_path),
