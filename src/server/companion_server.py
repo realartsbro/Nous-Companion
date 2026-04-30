@@ -3600,6 +3600,7 @@ Respond with ONLY a JSON object:
         prompt = f"""You just handled something — a fix, a find, or just a look around. Summarize it in one short sentence.
 Speak in first person — you're the one in control. Reference specific tools or files if they matter.
 Do NOT mention Hermes, AI assistants, or any external system. Do NOT quote error messages or technical logs.
+If you only READ a file or SEARCHED for something, do NOT claim you edited, modified, or changed it.
 User asked: {trigger_query[:150]}
 Actions you took:
 {tool_lines}
