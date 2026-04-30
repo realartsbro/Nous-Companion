@@ -28,6 +28,7 @@ EVENT_COMPLETE = "complete"
 EVENT_TOOL_USE = "tool_use"
 EVENT_IDLE = "idle"
 EVENT_SESSION_SWITCHED = "session_switched"
+EVENT_SESSION_ENDED = "session_ended"
 
 # A session is "live" if modified within this many seconds
 LIVE_SESSION_CUTOFF_S = 30 * 60  # 30 minutes
@@ -61,7 +62,8 @@ class HermesObserver:
 
         # Ended-session cache (from state.db) — refreshed on demand
         self._ended_session_ids: set[str] = set()
-        self._ended_cache_time: float = 0.0
+        self._ended_cache_time: float = 0
+        self._emitted_ended_for: set[str] = set()  # sessions we've already emitted EVENT_SESSION_ENDED for
         self._ENDED_CACHE_TTL: float = 10.0  # seconds
         self._session_meta_cache: dict[str, dict] = {}
         self._debug_poll: bool = os.environ.get(
@@ -646,6 +648,14 @@ class HermesObserver:
             self._current_session_file,
         )
         if current_record and current_record["is_ended"]:
+            sid = current_record.get("id") or self._watched_session_id or ""
+            if sid and sid not in self._emitted_ended_for:
+                self._emitted_ended_for.add(sid)
+                await self._emit(EVENT_SESSION_ENDED, {
+                    "session_id": sid,
+                    "message_count": current_record.get("message_count", 0),
+                    "model": current_record.get("model", ""),
+                })
             self._trace_poll(
                 f"[POLL] Current session {self._current_session_file.name} has ENDED. Forcing switch on next poll."
             )

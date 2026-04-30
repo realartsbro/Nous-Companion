@@ -48,7 +48,7 @@ from hermes_runtime import (
     save_runtime_overrides,
 )
 from server.hermes_observer import HermesObserver
-from server.hermes_observer import EVENT_THINKING, EVENT_COMPLETE, EVENT_TOOL_USE, EVENT_SESSION_SWITCHED
+from server.hermes_observer import EVENT_THINKING, EVENT_COMPLETE, EVENT_TOOL_USE, EVENT_SESSION_SWITCHED, EVENT_SESSION_ENDED
 from server.scene_player import ScenePlayer
 
 logger = logging.getLogger(__name__)
@@ -2888,6 +2888,14 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             await self._broadcast(json.dumps({
                 "type": "status",
                 "status": f"session: {context.get('session_id', '?')[:20]}",
+            }))
+
+        elif event_type == EVENT_SESSION_ENDED:
+            sid = context.get("session_id", "?")
+            print(f"[OBSERVER] EVENT_SESSION_ENDED: {sid}", flush=True)
+            await self._broadcast(json.dumps({
+                "type": "status",
+                "status": f"session ended: {sid[:20]}",
             }))
 
     def _get_context_depth(self) -> tuple[int, int]:
