@@ -733,18 +733,12 @@ fn launch_candidates<R: tauri::Runtime>(
             }
             BackendMode::Auto => {
                 eprintln!(
-                    "[nous-companion] auto backend mode on Windows: trying native Python first, then WSL fallback"
+                    "[nous-companion] auto backend mode on Windows: trying WSL first, then native Python fallback"
                 );
             }
             BackendMode::Native => {}
         }
     }
-
-    let native_candidates = python_candidates(&layout.root).into_iter().map(|mut candidate| {
-        candidate.state_path = state_path.clone();
-        candidate
-    });
-    candidates.extend(native_candidates);
 
     if cfg!(target_os = "windows") && matches!(backend_mode(), BackendMode::Auto) {
         if let Some(candidate) = wsl_launch_candidate(app, layout) {
@@ -753,6 +747,12 @@ fn launch_candidates<R: tauri::Runtime>(
             eprintln!("[nous-companion] WSL launch unavailable, using native Windows Python only");
         }
     }
+
+    let native_candidates = python_candidates(&layout.root).into_iter().map(|mut candidate| {
+        candidate.state_path = state_path.clone();
+        candidate
+    });
+    candidates.extend(native_candidates);
 
     candidates
 }
