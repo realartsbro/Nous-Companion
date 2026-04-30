@@ -983,12 +983,13 @@ class HermesObserver:
         return 4
 
     _APPROVAL_KEYWORDS = re.compile(
-        r"(requires? (user )?approval|waiting for approval|approve\?|"
-        r"needs? (your )?confirmation|y/n|yes/no|proceed\?|"
+        r"(requires? (user )?approval|waiting for approval|"
+        r"approve|"
+        r"needs? (your )?confirmation|confirmation (is )?(needed|required)|y/n|yes/no|proceed\?|"
         r"this command requires|dangerous command|destructive operation|"
         r"permanently delete|are you sure|shall i proceed|"
         r"please confirm|can you confirm|your input (is )?needed|waiting for your|"
-        r"need you to|need your (input|confirmation|approval))",
+        r"need your (input|confirmation|approval))",
         re.I,
     )
 
