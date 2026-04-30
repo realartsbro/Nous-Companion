@@ -37,3 +37,4 @@ docs/internal/
 
 # Private/local characters (not for distribution)
 characters-private/
+temp_probe.ps1
