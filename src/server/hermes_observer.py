@@ -722,6 +722,7 @@ class HermesObserver:
 
                     elif role == "assistant":
                         has_tool_calls = bool(msg.get("tool_calls"))
+                        reasoning = (msg.get("reasoning") or msg.get("reasoning_content") or "")[:300]
                         if has_tool_calls:
                             # Enrich with: triggering user query + tool arguments
                             tc = msg.get("tool_calls", [])
@@ -769,6 +770,7 @@ class HermesObserver:
                                 "tool_args": tool_args,
                                 "trigger_query": trigger_query,
                                 "assistant_reasoning": content[:400],
+                                "reasoning": reasoning,
                                 "session": self._current_session_file.stem,
                                 "message_count": message_count,
                                 "significance": sig,
@@ -791,6 +793,7 @@ class HermesObserver:
                                     "tool_args": [],
                                     "trigger_query": trigger_query,
                                     "assistant_reasoning": content[:400],
+                                    "reasoning": reasoning,
                                     "session": self._current_session_file.stem,
                                     "message_count": message_count,
                                     "significance": 10,

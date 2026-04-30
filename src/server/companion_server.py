@@ -2784,6 +2784,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             tool_args = context.get("tool_args", [])
             trigger_query = context.get("trigger_query", "")
             assistant_reasoning = context.get("assistant_reasoning", "")
+            reasoning = context.get("reasoning", "")
             significance = context.get("significance", 4)
             approval_pending = context.get("approval_pending", False)
 
