@@ -44,6 +44,24 @@ jobs:
         working-directory: src-tauri
         run: cargo tauri build
 
+      - name: Copy resources for portable build
+        working-directory: src-tauri
+        shell: bash
+        run: |
+          mkdir -p target/release/characters
+          mkdir -p target/release/scripts
+          mkdir -p target/release/src
+          cp -r ../characters/nous target/release/characters/
+          cp -r ../scripts/run_nous_companion.py target/release/scripts/
+          cp -r ../src/server target/release/src/
+          cp -r ../src/brain target/release/src/
+          cp -r ../src/compositor target/release/src/
+          cp -r ../src/tts target/release/src/
+          cp -r ../src/hermes_runtime.py target/release/src/
+          cp ../requirements.txt target/release/
+          cp ../scripts/launch-portable.bat target/release/
+          echo "Resources copied for portable build"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -52,3 +70,8 @@ jobs:
           path: |
             src-tauri/target/release/bundle/**
             src-tauri/target/release/nous-companion*
+            src-tauri/target/release/characters/
+            src-tauri/target/release/scripts/
+            src-tauri/target/release/src/
+            src-tauri/target/release/requirements.txt
+            src-tauri/target/release/scenes/
