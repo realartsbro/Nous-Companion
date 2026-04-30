@@ -871,6 +871,15 @@ class CompanionServer:
             except Exception:
                 pass
 
+        soul_path = hermes_home / "SOUL.md"
+        if soul_path.exists():
+            try:
+                text = soul_path.read_text(encoding="utf-8").strip()
+                if text:
+                    parts.append(f"System persona:\n{text[:1500]}")
+            except Exception:
+                pass
+
         return "\n\n".join(parts) if parts else ""
 
     async def _generate_quip(self, context: str, reaction_kind: str = "generic") -> dict:

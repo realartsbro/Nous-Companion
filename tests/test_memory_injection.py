@@ -107,3 +107,19 @@ class TestMemoryInjection:
         result = server._load_user_memory()
         assert "About the operator:" in result
         assert "Environment notes:" not in result
+
+    def test_soul_md_included(self):
+        """SOUL.md should be included when it has content."""
+        soul_dir = self.tmp_dir / "soul_hermes"
+        soul_dir.mkdir()
+        soul_mem = soul_dir / "memories"
+        soul_mem.mkdir()
+        (soul_mem / "USER.md").write_text("User info.")
+        (soul_dir / "SOUL.md").write_text("Hermes soul content here.")
+
+        char_dir = Path(__file__).parent.parent / "characters" / "nous"
+        server = CompanionServer(str(char_dir), hermes_home=str(soul_dir))
+        result = server._load_user_memory()
+        assert "System persona:" in result
+        assert "Hermes soul content" in result
+        assert "About the operator:" in result
