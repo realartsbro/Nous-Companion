@@ -39,26 +39,26 @@ catch {
 }
 Remove-Item $ZipPath -Force
 
-# Find the installer
-$Installer = Get-ChildItem -Path $InstallDir -Recurse -Filter "*setup.exe" | Select-Object -First 1
-if ($Installer) {
-    Write-Host "  Found installer: $($Installer.Name)"
-    Write-Host "  Running installer (silent mode)..."
-    Start-Process -Wait -FilePath $Installer.FullName -ArgumentList "/S"
-    Write-Host "  ✅ Installation complete!" -ForegroundColor Green
-    Write-Host "  Nous Companion is now installed. Launch from Start Menu."
+# Find the portable binary
+$Exe = Get-ChildItem -Path $InstallDir -Recurse -Filter "nous-companion.exe" | Select-Object -First 1
+if ($Exe) {
+    Write-Host ""
+    Write-Host "  ✅ Portable build ready!" -ForegroundColor Green
+    Write-Host "  Binary: $($Exe.FullName)"
+    Write-Host ""
+    Write-Host "  Run directly: $($Exe.FullName)"
+    Write-Host "  Or run the launcher for WSL setup:"
+    $Launcher = Join-Path $Exe.Directory.FullName "launch-portable.bat"
+    if (Test-Path $Launcher) {
+        Write-Host "    $Launcher"
+    }
+    Write-Host ""
+    Write-Host "  Or install properly via Start Menu:"
+    $Installer = Get-ChildItem -Path $InstallDir -Recurse -Filter "*setup.exe" | Select-Object -First 1
+    if ($Installer) {
+        Write-Host "    $($Installer.FullName)"
+    }
 }
 else {
-    # Try to find the raw exe
-    $Exe = Get-ChildItem -Path $InstallDir -Recurse -Filter "nous-companion.exe" | Select-Object -First 1
-    if ($Exe) {
-        Write-Host "  Found binary: $($Exe.FullName)"
-        Write-Host "  ⚠ This is the raw binary — it may not work without the proper installer."
-        Write-Host "  Run: $($Exe.FullName)"
-    }
-    else {
-        Write-Host "  WARNING: Could not find installer or binary in $InstallDir" -ForegroundColor Yellow
-        Write-Host "  Files extracted:"
-        Get-ChildItem -Path $InstallDir -Recurse -Depth 2 | Select-Object Name
-    }
+    Write-Host "  WARNING: Could not find nous-companion.exe in $InstallDir" -ForegroundColor Yellow
 }

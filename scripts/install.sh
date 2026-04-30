@@ -82,29 +82,14 @@ install_platform() {
     unzip -qo "$tmpzip" -d "$INSTALL_DIR"
     echo "  Extracted to $INSTALL_DIR"
 
-    # Find and set up the binary
+    # Find and set up the portable binary
     case "$platform" in
         linux)
-            # Look for AppImage or executable
-            local appimage
-            appimage="$(find "$INSTALL_DIR" -maxdepth 2 -name '*.AppImage' -type f 2>/dev/null | head -1)"
-            if [ -n "$appimage" ]; then
-                chmod +x "$appimage"
-                ln -sf "$appimage" "$BIN_DIR/nous-companion" 2>/dev/null || true
-                echo "  Binary: $appimage"
-            else
-                # Fall back to the raw exe (bundle structure should have resources)
-                local exe
-                exe="$(find "$INSTALL_DIR" -maxdepth 2 -name 'nous-companion' -type f 2>/dev/null | head -1)"
-                if [ -n "$exe" ]; then
-                    chmod +x "$exe"
-                    ln -sf "$exe" "$BIN_DIR/nous-companion" 2>/dev/null || true
-                    echo "  Binary: $exe"
-                else
-                    echo "  WARNING: Could not find binary in $INSTALL_DIR"
-                    echo "  Files extracted:"
-                    ls -la "$INSTALL_DIR"
-                fi
+            local exe
+            exe="$(find "$INSTALL_DIR" -maxdepth 2 -name 'nous-companion' -type f 2>/dev/null | head -1)"
+            if [ -z "$exe" ]; then
+                # Fall back to AppImage
+                exe="$(find "$INSTALL_DIR" -maxdepth 2 -name '*.AppImage' -type f 2>/dev/null | head -1)"
             fi
             ;;
         macos)
