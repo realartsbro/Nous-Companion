@@ -1,7 +1,7 @@
 # Scene Player Import Test
 
 **Date:** 2026-04-30
-**Working Directory:** `/mnt/c/Users/will/Agent Workspace/codec-companion`
+**Working Directory:** `[project root]`
 **Python Version:** 3.10.12 (Linux/WSL)
 
 ---
