@@ -21,7 +21,7 @@ echo.
 echo  Starting companion...
 echo  Open http://localhost:8765 in your browser when ready.
 echo.
-start "" "%~dp0nous-companion.exe"
+start "" "%~dp0..\nous-companion.exe"
 echo.
 echo  To close the companion, close this window and the app.
 pause
