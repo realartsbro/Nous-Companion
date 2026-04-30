@@ -2,11 +2,10 @@
 
 > _a desktop friend that sits next to your Hermes_
 > _animated portraits · lip-synced TTS · reactive quips_
-> _— from the lab at ✦ Nous Research_
+> _a community project for Hermes Agent ✦_
 
-[![Tauri Build](https://github.com/nousresearch/nous-companion/actions/workflows/tauri-build.yml/badge.svg)](https://github.com/nousresearch/nous-companion/actions/workflows/tauri-build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform: Windows \| macOS \| Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
+[![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
 
 ---
 
@@ -35,41 +34,46 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 
 ### Prerequisites
 
-- **Hermes Agent** already installed and configured (API server enabled)
-- Hermes API server key set in `~/.hermes/.env`
 - Python 3.11+
+- **Hermes Agent** installed and configured (for reactive quips). Without Hermes, the companion still runs — you'll see the character portrait and can explore the settings UI, but she won't react to sessions.
 
-### Grab a Build
-
-Prebuilt releases are coming to **GitHub Releases**. Until then:
+### Option 1 — Browser (no Tauri needed)
 
 ```bash
-# 1. Clone
-git clone https://github.com/nousresearch/nous-companion.git
-cd nous-companion
-
-# 2. Install Python deps
 pip install -r requirements.txt
-
-# 3. Launch
 python scripts/run_nous_companion.py
-
-# 4. In another terminal, open the renderer
-#    (or use the Tauri desktop shell — see README below)
 ```
 
-### Tauri Desktop Shell
+Then open **http://localhost:8766** in your browser. The companion appears as a browser tab — borderless, always-on-top behaviour depends on your window manager.
+
+### Option 2 — Tauri Desktop App (development)
 
 ```bash
+# Terminal 1: Start the backend
+python scripts/run_nous_companion.py
+
+# Terminal 2: Start the Tauri shell
 cd src-tauri
 cargo tauri dev
 ```
 
-> On Windows with Hermes in WSL, set:
+> On Windows with Hermes in WSL:
 > ```powershell
 > $env:NOUS_COMPANION_BACKEND_MODE='wsl'
 > cargo tauri dev
 > ```
+
+### Option 3 — Prebuilt Binary (recommended for most users)
+
+Coming soon. Prebuilt installers will be published here once CI builds are set up.
+
+### Option 4 — Build Your Own Binary
+
+```bash
+cargo tauri build
+```
+
+The binary lands in `src-tauri/target/release/`. On Windows: `nous-companion.exe`. On macOS: `Nous-Companion.app`. On Linux: `nous-companion` AppImage.
 
 ---
 
@@ -224,4 +228,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## ⬡
 
-_Built with ∎ for Nous Research. Companion art by the community._
+_Built with ∎ for the Hermes Agent community._

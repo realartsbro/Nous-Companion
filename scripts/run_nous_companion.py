@@ -32,6 +32,26 @@ if str(SRC_ROOT) not in sys.path:
 
 from server.companion_server import CompanionServer  # noqa: E402
 
+_RENDERER_DIR = REPO_ROOT / "renderer"
+
+
+def _start_http_server(host: str, http_port: int) -> None:
+    """Start a minimal HTTP server for the renderer in a background thread."""
+    import http.server
+    import threading
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(_RENDERER_DIR), **kwargs)
+
+        def log_message(self, fmt, *args):
+            pass  # suppress request logs — the WS server handles logging
+
+    server = http.server.HTTPServer((host, http_port), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    print(f"[HTTP] Renderer available at http://{host}:{http_port}", flush=True)
+
 
 def default_character_dir() -> Path:
     for candidate in (
@@ -57,8 +77,12 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket bind host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
+    parser.add_argument("--http-port", type=int, default=8766, help="HTTP port for browser access (0 = disable)")
     parser.add_argument("--fps", type=int, default=30, help="Animation frame rate")
     args = parser.parse_args()
+
+    if args.http_port:
+        _start_http_server(args.host, args.http_port)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     server = CompanionServer(
