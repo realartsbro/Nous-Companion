@@ -178,6 +178,7 @@ class CompanionServer:
         self._tool_cooldown: float = 8.0
         self._session_watching: bool = True  # auto-follow latest session by default
         self._is_reacting: bool = False      # guard: don't react while already reacting
+        self._speech_accumulator: list[dict] = []  # events accumulated during speech, flushed on speech end
 
         # ─── Global TTS lock ─────────────────────────────────────────
         # Only one utterance plays at a time. Priority utterances (approval)
@@ -2823,6 +2824,17 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 print("[OBSERVER] _is_reacting is True, skipping non-urgent tool reaction", flush=True)
                 return
 
+            # ── During speech: accumulate instead of reacting separately ──
+            if self._is_speaking:
+                self._speech_accumulator.append({
+                    "tools": tools,
+                    "tool_args": tool_args,
+                    "trigger_query": trigger_query,
+                    "assistant_reasoning": assistant_reasoning,
+                    "significance": significance,
+                })
+                return
+
             # ── Low significance: silence ──
             if significance < self._tool_min_significance:
                 print(f"[OBSERVER] Tool sig={significance} < threshold={self._tool_min_significance} → silence", flush=True)
@@ -3851,6 +3863,22 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             traceback.print_exc()
             return {"quip": "...", "expression": "normal"}
 
+    def _flush_speech_accumulator(self) -> Optional[list[dict]]:
+        """Flush accumulated events from the speech period.
+
+        Called when _is_speaking transitions from True to False.
+        Returns the accumulated events (for processing) or None if empty.
+        Clears the accumulator after reading.
+        """
+        if not self._speech_accumulator:
+            return None
+        events = list(self._speech_accumulator)
+        self._speech_accumulator.clear()
+        n = len(events)
+        if n > 0:
+            print(f"[ACCUMULATOR] Flushing {n} accumulated event(s) from speech period", flush=True)
+        return events
+
     async def _synthesize_and_play(
         self,
         text: str,
@@ -3990,6 +4018,10 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             raise
         finally:
             self._is_speaking = False
+            # Flush any events that accumulated during speech
+            accumulated = self._flush_speech_accumulator()
+            if accumulated:
+                print(f"[ACCUMULATOR] {len(accumulated)} event(s) flushed after speech", flush=True)
             if not interrupted:
                 await self._broadcast(json.dumps({"type": "status", "status": "idle"}))
             if tmp_path:
