@@ -68,15 +68,32 @@ cd src-tauri
 cargo tauri dev
 ```
 
-> On Windows with Hermes in WSL:
-> ```powershell
-> $env:NOUS_COMPANION_BACKEND_MODE='wsl'
-> cargo tauri dev
-> ```
+> On Windows with Hermes in WSL, the companion auto-detects WSL and launches
+> the backend inside it — no special flags needed.
 
 ### Option 3 — Prebuilt Binary (recommended for most users)
 
-Coming soon. Prebuilt installers will be published here once CI builds are set up.
+Download the latest portable build for your platform from the
+[GitHub Releases page](https://github.com/realartsbro/Nous-Companion/releases):
+
+| Platform | Download |
+|----------|----------|
+| Windows  | `Nous-Companion-windows.zip` — unzip and run `nous-companion.exe` |
+| macOS    | `Nous-Companion-macos.zip` — unzip and run `Nous Companion.app` |
+| Linux    | `Nous-Companion-linux.zip` — unzip and run `nous-companion` (AppImage also included) |
+
+Or install in one command:
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.sh | bash
+
+# Windows (PowerShell)
+iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
+```
+
+On **Windows with Hermes in WSL**, the companion auto-detects WSL and runs the
+backend inside it — it just works out of the box.
 
 ### Option 4 — Build Your Own Binary
 
