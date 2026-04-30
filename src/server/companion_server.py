@@ -3050,6 +3050,12 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 else:
                     recent_pairs.append((user_text, pending_response))
                 pending_response = ""
+            elif role == "user" and content.startswith("[CONTEXT COMPACTION"):
+                # Compaction summaries contain natural-language recaps of earlier
+                # conversation. Include them as summarized context notes.
+                summary = content[len("[CONTEXT COMPACTION"):].replace("\n", " ").strip()[:300]
+                if summary:
+                    earlier_topics.append(f"[summary] {summary}")
             elif role == "assistant" and not content.startswith("{"):
                 pending_response = self._sanitize_text(content[:200])
 
