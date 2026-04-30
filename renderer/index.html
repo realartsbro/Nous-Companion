@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nous Companion</title>
+  <link rel="stylesheet" href="css/chrome.css?v=16">
+</head>
+<body>
+  <div id="wrapper">
+    <div id="companion">
+      <div class="frame">
+        <div class="portrait-container">
+          <img id="portrait" src="" alt="companion" style="display:none;">
+          <canvas id="portrait-canvas" width="187" height="267"></canvas>
+          <div class="scanlines"></div>
+          <canvas id="grain-canvas" width="187" height="267"></canvas>
+          <div id="interference-bars"></div>
+          <div id="burst-overlay"><canvas id="burst-canvas" width="187" height="267"></canvas></div>
+          <span class="indicator" id="status-dot"></span>
+          <div class="chrome-overlay">
+            <div class="top-bar">
+              <span class="label" id="status-label">PTT</span>
+              <span class="brand-label" id="brand-label">NOUS<br>COMPANION</span>
+              <span class="spacer"></span>
+              <button id="btn-settings" class="settings-cog" title="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button id="btn-close-app" class="window-close" title="Close app">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="bottom-bar">
+              <span class="freq" id="freq-display">140.85</span>
+            </div>
+            <canvas id="wave-viz" class="hermes-wave-viz"></canvas>
+            <div class="hermes-actions">
+              <button id="hermes-btn-settings">SETTINGS</button>
+              <span class="hermes-action-sep">/</span>
+              <button id="hermes-btn-close">CLOSE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="startup-overlay" class="startup-overlay">
+    <div class="splash-wordmark">NOUS<br>COMPANION</div>
+    <div class="splash-loading-row">
+      <span id="startup-message" class="splash-status">Booting</span>
+      <span class="splash-loader"><span></span><span></span><span></span></span>
+    </div>
+  </div>
+
+  <script src="js/renderer.js?v=20260430-splash-rotation"></script>
+</body>
+</html>

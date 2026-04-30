@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arc Border Effect</title>
+  <style>
+    @font-face {
+      font-family: 'Mondwest'; font-style: normal; font-weight: 400; font-display: swap;
+      src: url('assets/fonts/Mondwest-Regular.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Collapse'; font-style: normal; font-weight: 700; font-display: swap;
+      src: url('assets/fonts/Collapse-Bold.woff2') format('woff2');
+    }
+
+    :root {
+      --base: #0A0C0B;
+      --bone: #E8E4D8;
+      --divider: #2D3A31;
+      --surface-elevated: #1A241E;
+      --surface-container-lowest: #0d0f0e;
+      --on-surface: #e2e3e0;
+      --on-surface-variant: #cac6bc;
+      --outline: #939188;
+      --secondary: #bec9c0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--base); color: var(--on-surface); padding: 48px;
+      font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column;
+      align-items: center; gap: 48px;
+    }
+    h1 { font-family: 'Collapse', sans-serif; font-weight: 700; font-size: 24px;
+         color: var(--secondary); letter-spacing: 0.05em; text-transform: uppercase; }
+
+    /* ── The effect — pure CSS, no JS ── */
+    .arc-card {
+      position: relative;
+      width: 240px;
+      padding: 28px 24px;
+      border: 1px solid var(--divider);
+      background: var(--surface-container-lowest);
+      cursor: pointer;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+    .arc-card:hover {
+      border-color: transparent;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Animated gradient arc border ── */
+    .arc-card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      z-index: -1;
+      padding: 1.25px;
+      border-radius: inherit;
+      background: linear-gradient(
+        160deg,
+        transparent 0%,
+        var(--secondary) 15%,
+        var(--surface-elevated) 20%,
+        var(--base) 25%,
+        transparent 35%,
+        transparent 40%,
+        var(--secondary) 55%,
+        var(--surface-elevated) 60%,
+        var(--base) 65%,
+        transparent 75%,
+        transparent 80%,
+        var(--secondary) 95%,
+        var(--surface-elevated) 100%
+      );
+      background-size: 300% 300%;
+      background-position: 0% 0%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      mask-image:
+        linear-gradient(#000, #000),
+        linear-gradient(#000, #000);
+      mask-clip: content-box, border-box;
+      mask-origin: content-box, border-box;
+      mask-composite: exclude;
+    }
+    .arc-card:hover::before {
+      opacity: 1;
+      animation: arc-sweep 2.23s linear infinite;
+    }
+
+    @keyframes arc-sweep {
+      0%   { background-position: 0% 0%; }
+      100% { background-position: 300% 300%; }
+    }
+
+    /* ── Dither noise overlay (the "displacement" texture) ── */
+    .arc-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      background: repeating-conic-gradient(
+        rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.06) 25%,
+        transparent 0%, transparent 50%
+      ) 0px 0px / 2px 2px;
+      mix-blend-mode: overlay;
+    }
+    .arc-card:hover::after {
+      opacity: 1;
+    }
+
+    /* ── Content inside the card ── */
+    .arc-card .title {
+      font-family: 'Mondwest', sans-serif;
+      font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--secondary); margin-bottom: 8px;
+    }
+    .arc-card .price {
+      font-family: 'Collapse', sans-serif;
+      font-weight: 700; font-size: 32px; color: var(--bone);
+    }
+    .arc-card .desc {
+      font-size: 11px; color: var(--outline); margin-top: 6px;
+    }
+
+    /* ── Demo row ── */
+    .demo-row { display: flex; gap: 32px; flex-wrap: wrap; justify-content: center; }
+    .demo-card { text-align: center; }
+    .demo-card .label {
+      font-family: 'Mondwest', sans-serif; font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--outline-variant); margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Arc Border — Pure CSS</h1>
+
+  <div class="demo-row">
+    <div class="demo-card">
+      <div class="label">Original (no effect)</div>
+      <div class="arc-card" style="border-color:var(--divider)"><div class="title">Free</div><div class="price">$0</div><div class="desc">Free models only</div></div>
+    </div>
+    <div class="demo-card">
+      <div class="label">Arc border + dither</div>
+      <div class="arc-card"><div class="title">Plus</div><div class="price">$20</div><div class="desc">300+ models · $22 credits</div></div>
+    </div>
+    <div class="demo-card">
+      <div class="label">Arc border + dither</div>
+      <div class="arc-card"><div class="title">Super</div><div class="price">$100</div><div class="desc">300+ models · $110 credits</div></div>
+    </div>
+    <div class="demo-card">
+      <div class="label">Arc border + dither</div>
+      <div class="arc-card"><div class="title">Ultra</div><div class="price">$200</div><div class="desc">300+ models · $220 credits</div></div>
+    </div>
+  </div>
+
+  <p style="color:var(--outline); font-size:11px; max-width:600px; text-align:center;">
+    Hover over the cards. The arc border sweeps infinitely like the Nous portal effect.
+    Two layers: an animated gradient border (<code>::before</code>) + a dither noise overlay
+    (<code>::after</code> with <code>mix-blend-mode: overlay</code>).
+    Zero JavaScript, zero images, zero canvas.
+  </p>
+</body>
+</html>

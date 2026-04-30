@@ -1,0 +1,301 @@
+/* Nous Companion — main window */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: transparent;
+  overflow: hidden;
+  width: auto;
+  user-select: none;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+}
+
+@font-face {
+  font-family: 'MGS1 Codec';
+  src: url('../assets/fonts/MGS1-Codec.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+::-webkit-scrollbar { display: none; }
+html { scrollbar-width: none; }
+
+#wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+
+#companion {
+  width: 187px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.frame {
+  width: 100%;
+  background: transparent;
+  border: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(122,170,150,0.8);
+  box-shadow: 0 0 4px rgba(122,170,150,0.5);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.indicator.thinking { background: rgba(255,200,0,0.8); animation: pulse 1.5s ease-in-out infinite; }
+.indicator.speaking { background: rgba(0,180,255,0.8); }
+.indicator.disconnected { background: rgba(200,60,60,0.8); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.label {
+  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-size: 20px;
+  color: rgba(122,170,150,0.88);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  min-width: 0;
+  max-width: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+  transform: translateY(1px);
+}
+.spacer { flex: 1; }
+
+.settings-cog,
+.window-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  -webkit-app-region: no-drag;
+  transition: color 0.2s;
+}
+
+.settings-cog {
+  color: rgba(122,170,150,0.56);
+  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-size: 11px;
+}
+.settings-cog:hover { color: rgba(122,170,150,0.95); }
+.settings-cog.active { color: rgba(205,205,205,0.95); }
+
+.window-close {
+  color: rgba(205,120,120,0.68);
+  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-size: 11px;
+}
+.window-close:hover { color: rgba(255,120,120,0.95); }
+
+.portrait-container {
+  position: relative;
+  width: 100%;
+  height: 267px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 0;
+  -webkit-app-region: drag;
+  background: rgba(0,0,0,0.42);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.34);
+}
+
+.chrome-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+.portrait-container:hover .chrome-overlay,
+.portrait-container:focus-within .chrome-overlay {
+  opacity: 1;
+}
+
+.top-bar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: rgba(0,0,0,0.90);
+  border-bottom: 1px solid rgba(122,170,150,0.18);
+  flex-shrink: 0;
+}
+
+.bottom-bar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 6px;
+  background: rgba(0,0,0,0.90);
+  border-top: 1px solid rgba(122,170,150,0.16);
+  flex-shrink: 0;
+}
+
+.freq {
+  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-size: 20px;
+  color: rgba(122,170,150,0.76);
+  letter-spacing: 0.8px;
+  display: block;
+  line-height: 1;
+  transform: translateY(1px);
+}
+
+.chrome-overlay .settings-cog,
+.chrome-overlay .window-close {
+  pointer-events: auto;
+}
+
+.chrome-overlay .top-bar,
+.chrome-overlay .bottom-bar,
+.chrome-overlay .label,
+.chrome-overlay .freq {
+  text-shadow: 0 0 4px rgba(122,170,150,0.18);
+}
+
+.portrait-container.size-medium .label,
+.portrait-container.size-small .label {
+  display: none;
+}
+.portrait-container.size-medium .top-bar,
+.portrait-container.size-small .top-bar {
+  justify-content: flex-end;
+}
+
+#portrait {
+  width: 187px;
+  height: 267px;
+  object-fit: fill;
+  image-rendering: pixelated;
+  transition: opacity 0.2s;
+  filter: brightness(1.15) contrast(1.05);
+  display: none;
+}
+
+#portrait-canvas {
+  width: 187px;
+  height: 267px;
+  image-rendering: pixelated;
+  filter: brightness(1.15) contrast(1.05);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.portrait-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 30px 10px rgba(180,220,200,0.15);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.06) 2px, rgba(255,255,255,0.06) 4px);
+  pointer-events: none;
+  z-index: 2;
+}
+.scanlines::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.12);
+  animation: sweep 5s linear infinite;
+  pointer-events: none;
+}
+@keyframes sweep {
+  0% { top: -2px; }
+  85% { top: 100%; }
+  100% { top: 100%; }
+}
+
+#grain-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.08;
+  mix-blend-mode: screen;
+  image-rendering: pixelated;
+}
+
+#interference-bars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.interference-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,0.4) 0px,
+    rgba(255,255,255,0.4) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0;
+  animation: bar-scroll 5s linear forwards;
+  image-rendering: pixelated;
+}
+
+@keyframes bar-scroll {
+  0% { opacity: 0; transform: translateY(-100%); }
+  5% { opacity: 0.5; }
+  95% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(267px); }
+}
+
+#burst-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+  opacity: 0;
+}
+#burst-overlay.active { opacity: 1; }
+#burst-overlay canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font Preview — Nous Companion Settings</title>
+  <style>
+    @font-face {
+      font-family: 'Mondwest';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('assets/fonts/Mondwest-Regular.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Collapse';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('assets/fonts/Collapse-Regular.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Collapse';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url('assets/fonts/Collapse-Bold.woff2') format('woff2');
+    }
+
+    :root {
+      --base: #0A0C0B;
+      --bone: #E8E4D8;
+      --divider: #2D3A31;
+      --surface-elevated: #1A241E;
+      --surface-container-lowest: #0d0f0e;
+      --on-surface: #e2e3e0;
+      --on-surface-variant: #cac6bc;
+      --outline: #939188;
+      --outline-variant: #48473f;
+      --secondary: #bec9c0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--base);
+      color: var(--on-surface);
+      font-family: 'Segoe UI', sans-serif;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    h1 {
+      font-family: 'Collapse', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--divider);
+      padding-bottom: 12px;
+    }
+
+    .comparison-row {
+      display: flex;
+      gap: 32px;
+    }
+
+    .panel {
+      flex: 1;
+      border: 1px solid var(--divider);
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 10px 14px;
+      background: var(--surface-elevated);
+      border-bottom: 1px solid var(--divider);
+      font-family: 'Collapse', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .panel-content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--outline-variant);
+      margin-bottom: 2px;
+    }
+
+    .element-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .element-group-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--outline);
+    }
+
+    .sample-select,
+    .sample-input,
+    .sample-button {
+      width: 100%;
+      padding: 6px 8px;
+      background: var(--surface-container-lowest);
+      border: 1px solid var(--divider);
+      color: var(--bone);
+      font-size: 12px;
+      outline: none;
+      border-radius: 0;
+    }
+
+    .sample-button {
+      background: var(--surface-elevated);
+      cursor: pointer;
+      border-color: var(--outline-variant);
+      padding: 6px 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .sample-button:hover {
+      background: var(--divider);
+    }
+
+    .sample-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .sample-toggle .toggle-track {
+      width: 32px;
+      height: 18px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--divider);
+      position: relative;
+      cursor: pointer;
+    }
+    .sample-toggle .toggle-thumb {
+      width: 14px;
+      height: 14px;
+      background: var(--outline);
+      position: absolute;
+      top: 1px;
+      left: 1px;
+    }
+
+    .sample-body {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--bone);
+      padding: 8px 10px;
+      background: var(--surface-container-lowest);
+      border: 1px solid var(--divider);
+      min-height: 60px;
+    }
+
+    .sample-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+      color: var(--outline-variant);
+      margin-top: 4px;
+    }
+
+    .sample-code {
+      font-size: 12px;
+      padding: 6px 8px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--divider);
+      color: var(--on-surface-variant);
+    }
+
+    /* ── LEFT PANEL: Old (Collapse UI) ── */
+    .old-ui .sample-select,
+    .old-ui .sample-input,
+    .old-ui .sample-button,
+    .old-ui .sample-toggle,
+    .old-ui .sample-section-label,
+    .old-ui .sample-code {
+      font-family: 'Collapse', 'Segoe UI', sans-serif;
+    }
+    .old-ui .sample-body {
+      font-family: 'Mondwest', 'Segoe UI', sans-serif;
+    }
+
+    /* ── RIGHT PANEL: New (Mondwest UI) ── */
+    .new-ui .sample-select,
+    .new-ui .sample-input,
+    .new-ui .sample-button,
+    .new-ui .sample-toggle,
+    .new-ui .sample-section-label,
+    .new-ui .sample-code {
+      font-family: 'Mondwest', 'Segoe UI', sans-serif;
+    }
+    .new-ui .sample-body {
+      font-family: 'Mondwest', 'Segoe UI', sans-serif;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 10px 14px;
+      background: var(--surface-elevated);
+      color: var(--secondary);
+      border-bottom: 1px solid var(--divider);
+    }
+
+    .badge.old { background: #2d1a1a; color: #ffb4ab; }
+    .badge.new { background: #1a2d1a; color: #b4ffab; }
+
+    hr { border: none; border-top: 1px solid var(--divider); margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>Font Preview — Settings Window</h1>
+
+  <div class="comparison-row">
+    <!-- OLD: Collapse UI -->
+    <div class="panel old-ui">
+      <div class="badge old">← BEFORE — --font-ui: Collapse</div>
+      <div class="panel-header">Sample Settings Panel</div>
+      <div class="panel-content">
+        <div class="element-group">
+          <div class="element-group-label">Section Label</div>
+          <div class="sample-section-label">Live Feed</div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Toggle</div>
+          <div class="sample-toggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>Godmode</span>
+          </div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Select Dropdown</div>
+          <select class="sample-select">
+            <option>Hermes</option>
+            <option>Classic (MGS1)</option>
+          </select>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Input Field</div>
+          <input class="sample-input" type="text" placeholder="Test reaction…" value="What do you think?">
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Body Text (Live Feed)</div>
+          <div class="sample-body">Hm. Interesting approach. I'm not sure the dramatic tension lands as intended — the setup gives away the reveal. Maybe try a different framing? <span style="color:var(--outline);">▌</span></div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Buttons</div>
+          <button class="sample-button">▶ Play</button>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Code / Mono</div>
+          <div class="sample-code">color: var(--bone); font-size: 12px;</div>
+        </div>
+
+        <hr>
+        <div style="display:flex; gap:6px; font-size:10px; color:var(--outline-variant);">
+          <span>File: character.yaml</span>
+          <span style="color:var(--outline);">·</span>
+          <span>Modified: 2h ago</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Mondwest UI -->
+    <div class="panel new-ui">
+      <div class="badge new">→ AFTER — --font-ui: Mondwest</div>
+      <div class="panel-header">Sample Settings Panel</div>
+      <div class="panel-content">
+        <div class="element-group">
+          <div class="element-group-label">Section Label</div>
+          <div class="sample-section-label">Live Feed</div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Toggle</div>
+          <div class="sample-toggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span>Godmode</span>
+          </div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Select Dropdown</div>
+          <select class="sample-select">
+            <option>Hermes</option>
+            <option>Classic (MGS1)</option>
+          </select>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Input Field</div>
+          <input class="sample-input" type="text" placeholder="Test reaction…" value="What do you think?">
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Body Text (Live Feed)</div>
+          <div class="sample-body">Hm. Interesting approach. I'm not sure the dramatic tension lands as intended — the setup gives away the reveal. Maybe try a different framing? <span style="color:var(--outline);">▌</span></div>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Buttons</div>
+          <button class="sample-button">▶ Play</button>
+        </div>
+
+        <div class="element-group">
+          <div class="element-group-label">Code / Mono</div>
+          <div class="sample-code">color: var(--bone); font-size: 12px;</div>
+        </div>
+
+        <hr>
+        <div style="display:flex; gap:6px; font-size:10px; color:var(--outline-variant);">
+          <span>File: character.yaml</span>
+          <span style="color:var(--outline);">·</span>
+          <span>Modified: 2h ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; padding:16px; border:1px solid var(--divider); background:var(--surface-elevated);">
+    <div style="flex:1;">
+      <div style="font-family:'Collapse',sans-serif; font-weight:700; font-size:28px; color:var(--secondary); letter-spacing:0.05em; text-transform:uppercase;">ABOUT TITLE</div>
+      <div style="font-size:10px; color:var(--outline-variant); margin-top:4px;">— font-brand: Collapse (unchanged)</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-family:'Mondwest',sans-serif; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--on-surface-variant);">Sidebar Item</div>
+      <div style="font-family:'Mondwest',sans-serif; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--outline);">· Settings</div>
+      <div style="font-family:'Mondwest',sans-serif; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--outline);">· Display</div>
+      <div style="font-size:10px; color:var(--outline-variant); margin-top:4px;">— font-nav: Mondwest (unchanged)</div>
+    </div>
+  </div>
+
+  <div style="font-size:11px; color:var(--outline); border-top: 1px solid var(--divider); padding-top:12px;">
+    <p>Open this file in a browser to see the actual rendered fonts.</p>
+    <p>Path: <code style="font-family:monospace; color:var(--secondary);">renderer/font-preview.html</code> in the nous-companion directory.</p>
+  </div>
+</body>
+</html>

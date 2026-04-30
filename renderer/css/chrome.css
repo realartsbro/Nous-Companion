@@ -1,0 +1,874 @@
+/* Nous Companion — main window */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  font-family: var(--font-classic);
+  font-size: 10px;
+}
+
+@font-face {
+  font-family: 'MGS1 Codec';
+  src: url('../assets/fonts/MGS1-Codec.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Mondwest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Mondwest-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Collapse';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/Collapse-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Collapse';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Collapse-Regular.woff2') format('woff2');
+}
+
+/* ── Role-based font tokens ─────────────────────────── */
+/* Swap faces here to change app-wide companion typography */
+:root {
+  --font-brand: 'Collapse', sans-serif;
+  --font-nav: 'Mondwest', sans-serif;
+  --font-ui: 'Mondwest', 'Segoe UI', sans-serif;
+  --font-body: 'Mondwest', 'Segoe UI', sans-serif;
+  --font-classic: 'MGS1 Codec', 'Courier New', monospace;
+}
+
+::-webkit-scrollbar { display: none; }
+html { scrollbar-width: none; }
+
+#wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-app-region: no-drag;
+}
+
+.startup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* Background image fills the splash — overridden by injected JS rule on startup */
+.startup-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../bg1.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.startup-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Brand wordmark — Collapse Bold, cream, two-line, left-aligned */
+.splash-wordmark {
+  position: absolute;
+  top: 50%;
+  left: 18px;
+  transform: translateY(-50%);
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.05;
+  text-align: left;
+  letter-spacing: 0.0525rem;
+  text-transform: uppercase;
+  color: #ffe6cb;
+  mix-blend-mode: plus-lighter;
+}
+
+/* Sweeping stroke overlay — same animation as Hermes brand label */
+.splash-wordmark::after {
+  content: "NOUS\A COMPANION";
+  white-space: pre;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  line-height: 1.05;
+  letter-spacing: 0.0525rem;
+  text-transform: uppercase;
+  text-align: left;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 230, 203, 0.35);
+  -webkit-mask: linear-gradient(
+    65deg,
+    transparent 38%,
+    rgba(0,0,0,0.5) 40%,
+    #000 42%,
+    #000 46%,
+    rgba(0,0,0,0.5) 48%,
+    transparent 50%
+  );
+  -webkit-mask-size: 200% 100%;
+  -webkit-mask-position: 100% 0;
+  mask: linear-gradient(
+    65deg,
+    transparent 38%,
+    rgba(0,0,0,0.5) 40%,
+    #000 42%,
+    #000 46%,
+    rgba(0,0,0,0.5) 48%,
+    transparent 50%
+  );
+  mask-size: 200% 100%;
+  mask-position: 100% 0;
+  opacity: 1;
+  animation: sweep-stroke 6s linear infinite;
+  -webkit-animation: sweep-stroke 6s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes sweep-stroke {
+  from { mask-position: 100% 0; -webkit-mask-position: 100% 0; }
+  to   { mask-position: -100% 0; -webkit-mask-position: -100% 0; }
+}
+
+/* Loading row — "Booting" left, ●●● right, aligned under COMPANION */
+.splash-loading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: absolute;
+  top: calc(50% + 27px);
+  left: 18px;
+  right: 43px;
+  z-index: 2;
+}
+
+.splash-loading-row .splash-status {
+  font-family: var(--font-nav);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 230, 203, 0.45);
+}
+
+.splash-loading-row .splash-loader {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.splash-loading-row .splash-loader span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 230, 203, 0.5);
+  animation: dot-pulse 1.4s ease-in-out infinite both;
+}
+
+.splash-loading-row .splash-loader span:nth-child(1) { animation-delay: 0s; }
+.splash-loading-row .splash-loader span:nth-child(2) { animation-delay: 0.2s; }
+.splash-loading-row .splash-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+#companion {
+  width: 187px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.frame {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.42);
+  border: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(122,170,150,0.8);
+  box-shadow: 0 0 4px rgba(122,170,150,0.5);
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.indicator.thinking { background: rgba(255,200,0,0.8); animation: pulse 1.5s ease-in-out infinite; }
+.indicator.speaking { background: rgba(0,180,255,0.8); }
+.indicator.disconnected { background: rgba(200,60,60,0.8); }
+
+/* Dot — moved outside overlay so always present. Positioned absolutely. */
+#status-dot {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  z-index: 15;
+  margin: 0;
+  transition: opacity 0.18s ease, background 0.3s, box-shadow 0.3s;
+}
+/* Hidden when overlay is open */
+.chrome-overlay.visible ~ #status-dot {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-classic);
+  font-size: 20px;
+  color: rgba(122,170,150,0.88);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.spacer { flex: 1; }
+
+.settings-cog,
+.window-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  -webkit-app-region: no-drag;
+  transition: color 0.2s;
+}
+
+.settings-cog {
+  color: rgba(122,170,150,0.56);
+  font-family: var(--font-classic);
+  font-size: 11px;
+}
+.settings-cog:hover { color: rgba(122,170,150,0.95); }
+.settings-cog.active { color: rgba(205,205,205,0.95); }
+
+.window-close {
+  color: rgba(205,120,120,0.68);
+  font-family: var(--font-classic);
+  font-size: 10px;
+}
+.window-close:hover { color: rgba(255,120,120,0.95); }
+
+.portrait-container {
+  position: relative;
+  width: 100%;
+  height: 267px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 0;
+  -webkit-app-region: drag;
+  background: rgba(0,0,0,0.42);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.34);
+}
+
+.chrome-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  visibility: hidden;
+  transition: visibility 0s linear 0.18s, opacity 0.18s ease;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.chrome-overlay.visible {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.top-bar {
+  height: 32px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: rgba(0,0,0,0.90);
+  border-bottom: 1px solid rgba(122,170,150,0.18);
+  flex-shrink: 0;
+}
+
+.bottom-bar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 6px;
+  background: rgba(0,0,0,0.90);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.freq {
+  font-family: var(--font-classic);
+  font-size: 20px;
+  color: rgba(122,170,150,0.76);
+  letter-spacing: 0.8px;
+}
+
+.chrome-overlay .settings-cog,
+.chrome-overlay .window-close {
+  pointer-events: auto;
+}
+
+.chrome-overlay .top-bar,
+.chrome-overlay .bottom-bar,
+.chrome-overlay .label,
+.chrome-overlay .freq {
+  text-shadow: 0 0 4px rgba(122,170,150,0.18);
+}
+
+.portrait-container.size-medium .label,
+.portrait-container.size-small .label {
+  display: none;
+}
+.portrait-container.size-medium .top-bar,
+.portrait-container.size-small .top-bar {
+  justify-content: flex-end;
+}
+
+#portrait {
+  width: 187px;
+  height: 267px;
+  object-fit: fill;
+  image-rendering: pixelated;
+  transition: opacity 0.2s;
+  filter: brightness(1.15) contrast(1.05);
+  display: none;
+}
+
+#portrait-canvas {
+  width: 187px;
+  height: 267px;
+  image-rendering: pixelated;
+  filter: brightness(1.15) contrast(1.05);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.portrait-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 30px 10px rgba(180,220,200,0.15);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.06) 2px, rgba(255,255,255,0.06) 4px);
+  pointer-events: none;
+  z-index: 2;
+}
+.scanlines::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.12);
+  animation: sweep 5s linear infinite;
+  pointer-events: none;
+}
+@keyframes sweep {
+  0% { top: -2px; }
+  85% { top: 100%; }
+  100% { top: 100%; }
+}
+
+#grain-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.08;
+  mix-blend-mode: screen;
+  image-rendering: pixelated;
+}
+
+#interference-bars { display: none; }
+
+#burst-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+  opacity: 0;
+}
+#burst-overlay.active { opacity: 1; }
+#burst-overlay canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* ── Color picker ──────────────────────────────────────── */
+.color-picker {
+  margin-left: auto;
+  width: 32px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 0;
+}
+
+/* ── Brand label (hidden by default, shown in hermes mode) ─────────────── */
+.brand-label {
+  display: none;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  color: #ffe6cb;
+  font-size: 11px;
+  letter-spacing: 0.0525rem;
+  text-transform: uppercase;
+  mix-blend-mode: plus-lighter;
+  white-space: nowrap;
+}
+
+/* Wave viz — audio-reactive EKG line in the gap right of NOUS */
+.hermes-wave-viz {
+  display: none;
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+}
+.hermes-mode .hermes-wave-viz {
+  display: block;
+}
+
+/* ─── Size tiers ─────────────────────────────────── */
+
+/* BIG — full experience (187px and 156px widths) */
+.hermes-mode.hermes-big .chrome-overlay .brand-label {
+  font-size: 24px;
+  left: 18px;
+}
+.hermes-mode.hermes-big .hermes-wave-viz {
+  display: block;
+}
+.hermes-mode.hermes-big .hermes-actions {
+  display: flex;
+}
+.hermes-mode.hermes-big .chrome-overlay .settings-cog,
+.hermes-mode.hermes-big .chrome-overlay .window-close {
+  display: none;
+}
+
+/* MEDIUM — compact (106px and 88px widths) */
+.hermes-mode.hermes-medium .chrome-overlay .brand-label {
+  font-size: 12px;
+  left: 12px;
+  line-height: 1.05;
+}
+.hermes-mode.hermes-medium .hermes-wave-viz {
+  display: none !important;
+}
+.hermes-mode.hermes-medium .hermes-actions {
+  display: none !important;
+}
+.hermes-mode.hermes-medium .chrome-overlay .settings-cog,
+.hermes-mode.hermes-medium .chrome-overlay .window-close {
+  display: inline-flex !important;
+  position: absolute;
+  z-index: 2;
+}
+.hermes-mode.hermes-medium .chrome-overlay .settings-cog {
+  top: 6px;
+  right: 22px;
+  color: rgba(255, 230, 203, 0.5);
+}
+.hermes-mode.hermes-medium .chrome-overlay .settings-cog:hover {
+  color: rgba(255, 230, 203, 0.9);
+}
+.hermes-mode.hermes-medium .chrome-overlay .window-close {
+  top: 6px;
+  right: 6px;
+  color: rgba(215, 110, 110, 0.6);
+}
+.hermes-mode.hermes-medium .chrome-overlay .window-close:hover {
+  color: rgba(255, 140, 140, 0.95);
+}
+
+/* SMALL — minimal (62px and 52px widths) */
+.hermes-mode.hermes-small .chrome-overlay .brand-label {
+  font-size: 9px;
+  left: 8px;
+  line-height: 1.0;
+  letter-spacing: 0.02rem;
+}
+.hermes-mode.hermes-small .hermes-wave-viz {
+  display: none !important;
+}
+.hermes-mode.hermes-small .hermes-actions {
+  display: none !important;
+}
+.hermes-mode.hermes-small .chrome-overlay .settings-cog,
+.hermes-mode.hermes-small .chrome-overlay .window-close {
+  display: inline-flex !important;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 2;
+}
+.hermes-mode.hermes-small .chrome-overlay .settings-cog {
+  top: 3px;
+  right: 16px;
+  color: rgba(255, 230, 203, 0.5);
+}
+.hermes-mode.hermes-small .chrome-overlay .settings-cog:hover {
+  color: rgba(255, 230, 203, 0.9);
+}
+.hermes-mode.hermes-small .chrome-overlay .window-close {
+  top: 3px;
+  right: 3px;
+  color: rgba(215, 110, 110, 0.6);
+}
+.hermes-mode.hermes-small .chrome-overlay .window-close:hover {
+  color: rgba(255, 140, 140, 0.95);
+}
+.hermes-mode.hermes-small #status-dot {
+  top: 6px;
+  left: 6px;
+  width: 5px;
+  height: 5px;
+}
+.hermes-mode.hermes-small .chrome-overlay .settings-cog svg,
+.hermes-mode.hermes-small .chrome-overlay .window-close svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ─── Classic mode size scaling ─────────────────────────── */
+
+.size-medium .bottom-bar {
+  height: 18px;
+}
+.size-medium .freq {
+  font-size: 14px;
+}
+.size-medium .label {
+  font-size: 14px;
+}
+.size-medium .settings-cog,
+.size-medium .window-close {
+  width: 13px;
+  height: 13px;
+}
+.size-medium .settings-cog svg,
+.size-medium .window-close svg {
+  width: 12px;
+  height: 12px;
+}
+
+.size-small .bottom-bar {
+  height: 14px;
+  padding: 0 4px;
+}
+.size-small .freq {
+  font-size: 11px;
+}
+.size-small .top-bar {
+  height: 24px;
+  padding: 0 4px;
+}
+.size-small .label {
+  font-size: 12px;
+}
+.size-small .indicator {
+  width: 5px;
+  height: 5px;
+}
+.size-small .settings-cog,
+.size-small .window-close {
+  width: 12px;
+  height: 12px;
+}
+.size-small .settings-cog svg,
+.size-small .window-close svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ── Hermes Dashboard-inspired mode ────────────────────────────────────── */
+
+/* Full-height semi-transparent overlay */
+.hermes-mode .chrome-overlay {
+  background: rgba(4, 28, 28, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide classic bars — children positioned independently */
+.hermes-mode .chrome-overlay .top-bar,
+.hermes-mode .chrome-overlay .bottom-bar {
+  background: transparent !important;
+  border: none !important;
+  height: auto !important;
+  box-shadow: none !important;
+  position: static !important;
+}
+
+.hermes-mode .chrome-overlay .label {
+  display: none;
+}
+
+.hermes-mode .chrome-overlay .freq {
+  display: none;
+}
+
+.hermes-mode .chrome-overlay .spacer {
+  display: none;
+}
+
+/* Hide icon buttons in hermes mode */
+.hermes-mode .chrome-overlay .settings-cog,
+.hermes-mode .chrome-overlay .window-close {
+  display: none;
+}
+
+/* Text actions below brand — Mondwest, dashboard nav style */
+.hermes-actions {
+  display: none;
+}
+.hermes-mode .hermes-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  position: absolute;
+  top: calc(50% + 27px);
+  left: 18px;
+  z-index: 2;
+}
+.hermes-mode .hermes-actions button {
+  background: none;
+  border: none;
+  font-family: var(--font-nav);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 230, 203, 0.45);
+  cursor: pointer;
+  padding: 0;
+  -webkit-app-region: no-drag;
+  transition: color 0.2s;
+  pointer-events: auto;
+}
+.hermes-mode .hermes-actions button:hover {
+  color: rgba(255, 230, 203, 0.9);
+}
+.hermes-mode .hermes-action-sep {
+  display: none;
+}
+
+/* Brand text — centered vertically, left-aligned, bigger */
+.hermes-mode .chrome-overlay .brand-label {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 18px;
+  transform: translateY(-50%);
+  font-family: var(--font-brand);
+  font-weight: 700;
+  color: #ffe6cb;
+  font-size: 24px;
+  line-height: 1.05;
+  text-align: left;
+  letter-spacing: 0.0525rem;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+/* Outward-only stroke — revealed by sweeping mask */
+.hermes-mode .chrome-overlay .brand-label::before {
+  content: "NOUS\A COMPANION";
+  white-space: pre;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  line-height: 1.05;
+  letter-spacing: 0.0525rem;
+  text-transform: uppercase;
+  text-align: left;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 230, 203, 0.35);
+  /* Mask reveals stroke in diagonal band only */
+  -webkit-mask: linear-gradient(
+    65deg,
+    transparent 38%,
+    rgba(0,0,0,0.5) 40%,
+    #000 42%,
+    #000 46%,
+    rgba(0,0,0,0.5) 48%,
+    transparent 50%
+  );
+  -webkit-mask-size: 200% 100%;
+  -webkit-mask-position: 100% 0;
+  mask: linear-gradient(
+    65deg,
+    transparent 38%,
+    rgba(0,0,0,0.5) 40%,
+    #000 42%,
+    #000 46%,
+    rgba(0,0,0,0.5) 48%,
+    transparent 50%
+  );
+  mask-size: 200% 100%;
+  mask-position: 100% 0;
+  opacity: 0;
+  animation: sweep-stroke 6s linear infinite;
+  -webkit-animation: sweep-stroke 6s linear infinite;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Speaking — cream trace */
+.hermes-mode .chrome-overlay .brand-label.state-speaking::before {
+  opacity: 1;
+}
+
+/* Thinking — gold trace, slower sweep */
+.hermes-mode .chrome-overlay .brand-label.state-thinking::before {
+  opacity: 1;
+  -webkit-text-stroke: 1.5px rgba(255, 189, 56, 0.4);
+  animation-duration: 8s;
+  -webkit-animation-duration: 8s;
+}
+
+/* Disconnected — red trace, slowest sweep */
+.hermes-mode .chrome-overlay .brand-label.state-disconnected::before {
+  opacity: 1;
+  -webkit-text-stroke: 1.5px rgba(255, 100, 100, 0.3);
+  animation-duration: 10s;
+  -webkit-animation-duration: 10s;
+}
+
+@keyframes sweep-stroke {
+  from { mask-position: 100% 0; -webkit-mask-position: 100% 0; }
+  to   { mask-position: -100% 0; -webkit-mask-position: -100% 0; }
+}
+
+/* Controls — floated top-right */
+.hermes-mode .chrome-overlay .settings-cog {
+  position: absolute;
+  top: 8px;
+  right: 28px;
+  color: rgba(255, 230, 203, 0.5);
+  font-family: var(--font-nav);
+  z-index: 2;
+}
+.hermes-mode .chrome-overlay .settings-cog:hover {
+  color: rgba(255, 230, 203, 0.9);
+}
+
+.hermes-mode .chrome-overlay .window-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: rgba(215, 110, 110, 0.6);
+  z-index: 2;
+}
+.hermes-mode .chrome-overlay .window-close:hover {
+  color: rgba(255, 140, 140, 0.95);
+}
+
+/* Dot in hermes mode — cream/gold tones */
+.hermes-mode #status-dot {
+  z-index: 5; /* below overlay (10) but above portrait (1) — dimly visible through teal */
+  background: rgba(255, 230, 203, 0.85);
+  box-shadow: 0 0 6px rgba(255, 230, 203, 0.45);
+}
+.hermes-mode .chrome-overlay.visible ~ #status-dot {
+  opacity: 1;
+  pointer-events: none;
+}
+.hermes-mode #status-dot.thinking {
+  background: rgba(255, 189, 56, 0.9);
+  box-shadow: 0 0 8px rgba(255, 189, 56, 0.5);
+}
+.hermes-mode #status-dot.speaking {
+  background: rgba(255, 230, 203, 0.95);
+  box-shadow: 0 0 8px rgba(255, 230, 203, 0.6);
+}
+.hermes-mode #status-dot.disconnected {
+  background: rgba(200, 100, 100, 0.85);
+  box-shadow: 0 0 6px rgba(200, 100, 100, 0.45);
+}

@@ -1,0 +1,8 @@
+aiohttp>=3.9
+edge-tts>=6.1
+gradio_client>=1.10
+numpy>=1.26
+Pillow>=10.0
+PyYAML>=6.0
+soundfile>=0.12
+websockets>=12.0

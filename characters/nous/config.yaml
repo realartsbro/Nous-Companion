@@ -1,0 +1,92 @@
+name: Nous
+description: ''
+voice:
+  engine: omnivoice
+  settings:
+    speed: 0.9
+  reference_audio: nous_normal.wav
+  expression_voices:
+    cheerful:
+      reference_audio: voice_cheerful.wav
+    serious:
+      reference_audio: voice_serious.wav
+animation:
+  speaking_cycle:
+  - speaking
+  flap_interval_ms: 180
+  mouth_open_threshold: 0.35
+  mouth_close_threshold: 0.18
+offsets:
+  _cheerful:
+    eyes:
+    - 0
+    - 0
+    mouth:
+    - 0
+    - 0
+  _normal:
+    eyes:
+    - 0
+    - 0
+    mouth:
+    - 0
+    - 0
+  _serious:
+    eyes:
+    - 0
+    - 0
+    mouth:
+    - 0
+    - 0
+display_mode: cover
+sprite_order:
+  _normal:
+    base: sprite-base.png
+    eyes:
+    - normal_eyes_full.png
+    - normal_eyes_half.png
+    mouths:
+    - normal_mouth_1.png
+    - normal_mouth_2.png
+    - normal_mouth_3.png
+    - normal_mouth_4.png
+  _cheerful:
+    base: base.png
+    eyes:
+    - cheerful_eyes_closed1.png
+    - cheerful_eyes_closed2.png
+    - cheerful_eyes_closed3.png
+    mouths:
+    - cheerful_mouth_open1.png
+    - cheerful_mouth_open2.png
+    - cheerful_mouth_open3.png
+  _serious:
+    base: base.png
+    eyes:
+    - serious_eyes_full.png
+    - serious_eyes_half.png
+    mouths:
+    - serious_mouth_1.png
+    - serious_mouth_2.png
+    - serious_mouth_3.png
+idle_rarity:
+  _cheerful: 5
+  _normal: 5
+  _serious: 5
+  _standalones:
+    cheeky1.png: 1
+    cheeky2.png: 1
+    eww.png: 1
+    happy.png: 1
+    munch1.png: 1
+    munch2.png: 1
+    surprise.png: 1
+    u.png: 1
+    u2.png: 1
+    wink1.png: 1
+    wink2.png: 1
+speech_allowed:
+  _cheerful: true
+  _normal: true
+  _serious: true
+  _standalones: false

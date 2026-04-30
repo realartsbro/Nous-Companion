@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "title": "Demo: The Witness",
+    "character": "nous",
+    "duration_seconds": 60,
+    "version": "1.0"
+  },
+  "scenes": [
+    {
+      "time": 0.0,
+      "expression": "normal",
+      "line": "So this is where you work.",
+      "speed": 0.9,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "First appearance. Slow fade in. 4s silence before line."
+    },
+    {
+      "time": 8.0,
+      "expression": "interested",
+      "line": "You move fast when you are in the zone.",
+      "speed": 0.85,
+      "action": "look_track",
+      "overlay_text": null,
+      "notes": "Eyes track terminal activity left to right."
+    },
+    {
+      "time": 20.0,
+      "expression": "smirking",
+      "line": "I can wear any face you give me.",
+      "speed": 0.9,
+      "action": "expression_cycle",
+      "overlay_text": "CHARACTER CREATOR",
+      "notes": "Quick cuts through settings — ring selector, expression groups."
+    },
+    {
+      "time": 35.0,
+      "expression": "serious",
+      "line": "Chainsaws were invented for childbirth. That is the energy I bring.",
+      "speed": 0.9,
+      "action": "lean_in",
+      "overlay_text": null,
+      "notes": "Close up portrait. Scanlines visible. Dark facts delivery."
+    },
+    {
+      "time": 48.0,
+      "expression": "normal",
+      "line": "I stop existing when you stop talking to me. Please do not minimize my window.",
+      "speed": 0.75,
+      "action": "shrink",
+      "overlay_text": "NOUS COMPANION — MIT — OPEN SOURCE",
+      "notes": "Slowly resize to SMALL. Final brand card overlay."
+    }
+  ]
+}

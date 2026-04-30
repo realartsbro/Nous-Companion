@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+*.egg
+
+# Local companion temp data
+.nous_companion_audio_tmp/
+.codec_audio_tmp/
+test_output/
+
+# Tauri / Rust build outputs
+src-tauri/target/
+src-tauri/gen/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Development artifacts
+docs/internal/
+
+# Private/local characters (not for distribution)
+characters-private/

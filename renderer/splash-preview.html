@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=189, initial-scale=1.0">
+  <title>Splash Preview</title>
+  <style>
+    /* ── Load actual fonts from project ─────────── */
+    @font-face {
+      font-family: 'Collapse';
+      font-weight: 700;
+      src: url('assets/fonts/Collapse-Bold.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Collapse';
+      font-weight: 400;
+      src: url('assets/fonts/Collapse-Regular.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Mondwest';
+      src: url('assets/fonts/Mondwest-Regular.woff2') format('woff2');
+    }
+
+    /* ── Reset ─────────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 189px;
+      height: 269px;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Courier New', monospace;
+      position: relative;
+    }
+
+    /* ── Companion frame (behind splash) ──────── */
+    #wrapper {
+      width: 189px;
+      height: 269px;
+      position: relative;
+    }
+
+    #companion {
+      width: 187px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: rgba(0, 0, 0, 0.42);
+    }
+
+    .frame {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.42);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .portrait-container {
+      position: relative;
+      width: 100%;
+      height: 267px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #0a0c0b;
+    }
+
+    .chrome-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.52) 70%, transparent 100%);
+      z-index: 10;
+    }
+
+    .label {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: rgba(122,170,150,0.88);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .spacer { flex: 1; }
+
+    .top-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 15px;
+      height: 15px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(122,170,150,0.56);
+      font-size: 11px;
+    }
+    .top-btn.close { color: rgba(205,120,120,0.68); }
+
+    .bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      background: linear-gradient(0deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.52) 70%, transparent 100%);
+      z-index: 10;
+    }
+
+    .freq {
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: rgba(122,170,150,0.6);
+      letter-spacing: 0.05em;
+    }
+
+    .show-splash .startup-overlay { opacity: 1; visibility: visible; }
+    .show-portrait .startup-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    /* ═══════════════════════════════════════════════
+       SPLASH — Hermes-style startup overlay
+       Exactly matching the Hermes mode chrome overlay
+       ═══════════════════════════════════════════════ */
+    .startup-overlay {
+      position: absolute;
+      inset: 0;
+      background: #0c0d0b;
+      background-image: url('bg.jpg');
+      background-size: cover;
+      background-position: center;
+      z-index: 400;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    /* Brand wordmark — Collapse Bold, cream, two-line, left-aligned like Hermes overlay */
+    .splash-wordmark {
+      position: absolute;
+      top: 50%;
+      left: 18px;
+      transform: translateY(-50%);
+      font-family: 'Collapse', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      line-height: 1.05;
+      text-align: left;
+      letter-spacing: 0.0525rem;
+      text-transform: uppercase;
+      color: #ffe6cb;
+      mix-blend-mode: plus-lighter;
+    }
+
+    /* Sweeping stroke — exact copy from chrome.css .brand-label::before */
+    .splash-wordmark::after {
+      content: "NOUS\A COMPANION";
+      white-space: pre;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      font-family: inherit;
+      font-weight: inherit;
+      font-size: inherit;
+      line-height: 1.05;
+      letter-spacing: 0.0525rem;
+      text-transform: uppercase;
+      text-align: left;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 1.5px rgba(255, 230, 203, 0.35);
+      -webkit-mask: linear-gradient(
+        65deg,
+        transparent 38%,
+        rgba(0,0,0,0.5) 40%,
+        #000 42%,
+        #000 46%,
+        rgba(0,0,0,0.5) 48%,
+        transparent 50%
+      );
+      -webkit-mask-size: 200% 100%;
+      -webkit-mask-position: 100% 0;
+      mask: linear-gradient(
+        65deg,
+        transparent 38%,
+        rgba(0,0,0,0.5) 40%,
+        #000 42%,
+        #000 46%,
+        rgba(0,0,0,0.5) 48%,
+        transparent 50%
+      );
+      mask-size: 200% 100%;
+      mask-position: 100% 0;
+      opacity: 1;
+      animation: sweep-stroke 6s linear infinite;
+      -webkit-animation: sweep-stroke 6s linear infinite;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    @keyframes sweep-stroke {
+      from { mask-position: 100% 0; -webkit-mask-position: 100% 0; }
+      to   { mask-position: -100% 0; -webkit-mask-position: -100% 0; }
+    }
+
+    /* Loading row — "STARTING" + dots, positioned like Hermes SETTINGS/CLOSE */
+    .splash-loading-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: absolute;
+      top: calc(50% + 27px);
+      left: 18px;
+      z-index: 2;
+    }
+    .splash-loading-row .splash-status {
+      font-family: 'Mondwest', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 230, 203, 0.45);
+    }
+    .splash-loading-row .splash-loader {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .splash-loading-row .splash-loader span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 230, 203, 0.5);
+      animation: dot-pulse 1.4s ease-in-out infinite both;
+    }
+    .splash-loading-row .splash-loader span:nth-child(1) { animation-delay: 0s; }
+    .splash-loading-row .splash-loader span:nth-child(2) { animation-delay: 0.2s; }
+    .splash-loading-row .splash-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot-pulse {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Preview toggle ─────────────────────────── */
+    .controls {
+      display: flex;
+      gap: 4px;
+      padding: 6px 4px 4px;
+    }
+    .controls button {
+      font-size: 9px;
+      padding: 2px 6px;
+      cursor: pointer;
+      background: #222;
+      color: #aaa;
+      border: 1px solid #444;
+    }
+    .controls button.active { background: #3a5a4a; color: #fff; }
+  </style>
+</head>
+<body class="show-splash">
+  <div id="wrapper">
+    <div id="companion">
+      <div class="frame">
+        <div class="portrait-container">
+          <div style="width:187px;height:267px;display:flex;align-items:center;justify-content:center;color:rgba(122,170,150,0.08);font-size:10px;">portrait</div>
+          <div class="chrome-overlay visible">
+            <div class="top-bar">
+              <span class="label">PTT</span>
+              <span class="spacer"></span>
+              <span class="top-btn">⚙</span>
+              <span class="top-btn close">✕</span>
+            </div>
+            <div class="bottom-bar">
+              <span class="freq">140.85</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Startup overlay — Hermes-style splash -->
+  <div class="startup-overlay">
+    <div class="splash-wordmark">NOUS<br>COMPANION</div>
+    <div class="splash-loading-row">
+      <span class="splash-status">Starting</span>
+      <span class="splash-loader"><span></span><span></span><span></span></span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="active" data-mode="splash">Splash</button>
+    <button data-mode="portrait">Portrait</button>
+    <script>
+      document.querySelectorAll('.controls button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.body.className = 'show-' + btn.dataset.mode;
+          document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    </script>
+  </div>
+</body>
+</html>
