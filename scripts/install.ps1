@@ -3,6 +3,7 @@
 # Or:   iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 
 $Repo = "realartsbro/Nous-Companion"
+$Tag = "v0.1.0-alpha"
 $InstallDir = "$env:LOCALAPPDATA\Nous-Companion"
 
 Write-Host "⬡ Nous Companion" -ForegroundColor Cyan
@@ -11,23 +12,10 @@ Write-Host "  Installing to: $InstallDir"
 # Create install directory
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
-# Get the download URL for the latest Windows release
-$ApiUrl = "https://api.github.com/repos/$Repo/releases/latest"
-Write-Host "  Fetching release info..."
-try {
-    $Release = Invoke-RestMethod -Uri $ApiUrl -Headers @{ "User-Agent" = "nous-companion-install" }
-    $Asset = $Release.assets | Where-Object { $_.name -like "*windows*" } | Select-Object -First 1
-    if (-not $Asset) {
-        Write-Host "ERROR: No Windows asset found in latest release" -ForegroundColor Red
-        exit 1
-    }
-    $DownloadUrl = $Asset.browser_download_url
-    Write-Host "  Downloading $($Asset.name)..."
-}
-catch {
-    Write-Host "ERROR: Could not fetch release info: $_" -ForegroundColor Red
-    exit 1
-}
+# Download URL using explicit tag
+$DownloadUrl = "https://github.com/$Repo/releases/download/$Tag/Nous-Companion-windows.zip"
+Write-Host "  Downloading..."
+Write-Host "  URL: $DownloadUrl"
 
 # Download the zip
 $ZipPath = "$env:TEMP\nous-companion-windows.zip"

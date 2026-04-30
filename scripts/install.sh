@@ -6,6 +6,7 @@
 set -euo pipefail
 
 REPO="realartsbro/Nous-Companion"
+TAG="v0.1.0-alpha"
 INSTALL_DIR="${NOUS_COMPANION_DIR:-"$HOME/.nous-companion"}"
 BIN_DIR="$HOME/.local/bin"
 
@@ -44,7 +45,7 @@ fetch_release() {
         windows)     asset_name="Nous-Companion-windows.zip" ;;
         *)           echo "unknown-platform:$platform"; exit 1 ;;
     esac
-    echo "https://github.com/$REPO/releases/latest/download/$asset_name"
+    echo "https://github.com/$REPO/releases/download/$TAG/$asset_name"
 }
 
 # --- Install ---
