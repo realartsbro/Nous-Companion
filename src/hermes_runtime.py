@@ -46,19 +46,13 @@ def save_runtime_overrides(updates: dict[str, str | None]) -> dict[str, str]:
 
 
 def _detect_windows_wsl_hermes_home() -> Path | None:
-    """Try to locate the default WSL Hermes home from native Windows Python.
-
-    Returns the native Linux path (e.g. /home/will/.hermes) rather than a
-    Windows UNC path.  On Windows Python the Linux path resolves correctly
-    through WSL's filesystem integration layer, avoids observer-pool latency
-    over UNC, and renders cleanly in the UI so users can re-type it if needed.
-    """
+    """Try to locate the default WSL Hermes home from native Windows Python."""
     if os.name != "nt":
         return None
 
     try:
         proc = subprocess.run(
-            ["wsl.exe", "sh", "-lc", "printf '%s' \"$HOME\""],
+            ["wsl.exe", "sh", "-lc", "printf '%s\\n%s' \"$WSL_DISTRO_NAME\" \"$HOME\""],
             capture_output=True,
             text=True,
             timeout=5,
@@ -67,17 +61,25 @@ def _detect_windows_wsl_hermes_home() -> Path | None:
     except Exception:
         return None
 
-    linux_home = proc.stdout.strip()
-    if not linux_home:
+    parts = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    if len(parts) < 2:
         return None
 
-    candidate = Path(linux_home) / ".hermes"
-    try:
-        if candidate.exists():
-            return candidate
-    except OSError:
-        return None
+    distro = parts[0]
+    linux_home = parts[1]
+    suffix = linux_home.replace("/", "\\").lstrip("\\")
+    candidates = [
+        Path(rf"\\wsl.localhost\{distro}\{suffix}\.hermes"),
+        Path(rf"\\wsl$\{distro}\{suffix}\.hermes"),
+    ]
+    for candidate in candidates:
+        try:
+            if candidate.exists():
+                return candidate
+        except OSError:
+            continue
     return None
+
 
 def detect_default_hermes_home() -> Path:
     """Best-effort Hermes home auto-detection for the current platform."""
