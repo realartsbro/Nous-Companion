@@ -37,22 +37,23 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - Python 3.11+
 - **Hermes Agent** installed and configured (for reactive quips). Without Hermes, the companion still runs — you'll see the character portrait and can explore the settings UI, but she won't react to sessions.
 
-### Option 1 — Browser (no Tauri needed)
+### Option 1 — Browser (for testing only)
+
+> **Note:** The browser tab works for quick testing, but the companion is designed as a desktop app. Use Option 3 or 4 for the full experience (always-on-top, borderless, edge snapping).
 
 ```bash
 pip install -r requirements.txt
 python scripts/run_nous_companion.py
 ```
 
-Then open **http://localhost:8766** in your browser. The companion appears as a browser tab — borderless, always-on-top behaviour depends on your window manager.
+Then open **http://localhost:8766** in your browser.
 
 ### Option 2 — Tauri Desktop App (development)
 
-```bash
-# Terminal 1: Start the backend
-python scripts/run_nous_companion.py
+For contributors who want to run from source with the full desktop experience:
 
-# Terminal 2: Start the Tauri shell
+```bash
+python scripts/run_nous_companion.py &
 cd src-tauri
 cargo tauri dev
 ```
