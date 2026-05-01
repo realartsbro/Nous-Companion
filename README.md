@@ -36,7 +36,7 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - **🎮 Godmode Live Feed** — opens a live text stream of every reaction so you can see her "thinking."
 - **🪟 Borderless Always-on-Top** — sits discreetly on your desktop. Three size tiers: BIG (267px), MEDIUM (150px), SMALL (89px).
 - **🎨 Hermes Mode Chrome** — full-height teal overlay with sweeping brand spotlight, EKG-style audio wave viz, and status animations.
-- **🖼️ Classic (MGS1) Mode** — green-codec bars, MGS1 Codec font, retro frequency display.
+- **🖼️ Classic Mode** — green-codec bars, retro frequency display.
 - **🔌 Multi-Character System** — switch between character profiles, each with their own expressions, voice references, and personality.
 - **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles. Legacy `.codec-character.zip` imports still supported.
 
@@ -130,7 +130,7 @@ For the **Kimi Track**, the companion's LLM provider can be set to any Kimi mode
 └──────────────────────┘
 ```
 
-Dark teal (`#041c1c`) backgrounds. Cream text (`#ffe6cb`). Collapse Bold for the brand. Mondwest for UI. MGS1 Codec for the retro classic skin.
+Dark teal (`#041c1c`) backgrounds. Cream text (`#ffe6cb`). Collapse Bold for the brand. Mondwest for UI. Classic retro codec font for the retro classic skin.
 
 ---
 

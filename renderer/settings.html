@@ -155,14 +155,6 @@
             <div class="settings-section">
               <div class="section-label">Voice</div>
               <div class="slider-row">
-                <span class="slider-label">Engine</span>
-                <div class="select-wrapper"><select id="editor-voice-engine">
-                  <option value="omnivoice">OmniVoice</option>
-                  <option value="edge-tts">Edge TTS</option>
-                  <option value="none">None (silent)</option>
-                </select></div>
-              </div>
-              <div class="slider-row">
                 <span class="slider-label">Speed</span>
                 <input type="range" id="editor-voice-speed" class="nous-slider" min="0.5" max="1.5" step="0.05" value="0.9">
                 <span id="editor-voice-speed-val" class="slider-value">0.9</span>
@@ -256,7 +248,7 @@
                 <span class="slider-label">Overlay design</span>
                 <div class="select-wrapper"><select id="chrome-style-select">
                   <option value="hermes">Hermes</option>
-                  <option value="classic">Classic (MGS1)</option>
+                  <option value="classic">Classic</option>
                 </select></div>
               </div>
               <div class="slider-row">
@@ -6891,7 +6883,6 @@ function buildRing() {
         saveInProgress = false;
         if (btnSave) btnSave.disabled = false;
         if (ok) {
-          setStatus("Saved!", "saved");
           markClean();
           pendingSpriteFiles = {};
           pendingDeleteSprites.clear();

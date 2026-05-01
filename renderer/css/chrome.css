@@ -71,7 +71,7 @@ html { scrollbar-width: none; }
   position: fixed;
   inset: 0;
   z-index: 400;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 1s ease, visibility 1s ease;
 }
 
 /* Background image fills the splash — overridden by injected JS rule on startup */
