@@ -38,3 +38,6 @@ docs/internal/
 # Private/local characters (not for distribution)
 characters-private/
 temp_probe.ps1
+
+# Internal development docs — not for public release
+.internal-docs/

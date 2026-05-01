@@ -169,7 +169,7 @@ Dark teal (`#041c1c`) backgrounds. Cream text (`#ffe6cb`). Collapse Bold for the
 
 Characters live in `characters/<name>/`:
 
-```
+```text
 characters/nous/
 ├── config.yaml            # sprite ordering, voice settings, idle rarity
 ├── personality.md         # LLM system prompt for quip generation
@@ -178,31 +178,34 @@ characters/nous/
 ├── voice_serious.wav
 ├── _normal/               # expression group
 │   ├── sprite-base.png    # base head
-│   ├── sprite-eyes-open.png
-│   ├── sprite-eyes-closed.png
-│   ├── sprite-mouth-closed.png
-│   └── sprite-mouth-open.png
+│   ├── normal_eyes_full.png
+│   ├── normal_eyes_half.png
+│   ├── normal_mouth_1.png
+│   ├── normal_mouth_2.png
+│   ├── normal_mouth_3.png
+│   └── normal_mouth_4.png
 ├── _cheerful/             # another expression
 └── _standalones/          # idle-only full frames (no compositing)
 ```
 
 ---
 
-## 🛠️ For Hermes Users: Skills Integration
+## 🛠️ For Hermes Users
 
-If you use Hermes Agent, load the **nous-companion** skill to give your Hermes full context about the companion's architecture, settings, and debugging:
+Nous Companion has a Hermes skill available with full context about the companion's architecture, settings, and debugging. If you use Hermes Agent:
 
 ```bash
-hermes skill view nous-companion
+hermes skill view nous-companion-release-handoff
 ```
 
 The skill covers:
-- WebSocket protocol and concurrent-send pitfalls
-- Provider routing and model cache management
-- Character editor UI and idle rarity system
-- Chrome overlay styles (Hermes + Classic)
-- All visual effects (scanlines, grain, interference, burst, analog bleed)
-- Debugging guide for frame decode starvation, Tauri bridge relay, and more
+- Project state, task board, and release status
+- WSL backend detection and troubleshooting
+- WebSocket protocol notes
+- All visual effects documentation
+- Character system and file format
+
+> **Note:** This skill is primarily for development tracking. End users can safely ignore it — the companion works without loading any Hermes skill.
 
 ---
 
