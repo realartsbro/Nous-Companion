@@ -21,6 +21,8 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 
 **Nous Companion** is a small always-on companion window for [Hermes Agent](https://hermes-agent.nousresearch.com). She watches your Hermes sessions, reacts in character with a pixel-animated portrait, speaks with lip-sync, and keeps you company while you work.
 
+> _Nous Companion is an independent community project. "Nous" is used with permission from Nous Research._
+
 She runs entirely locally — no cloud dependency for the core loop. TTS and LLM calls go through whatever providers you already have configured in Hermes.
 
 ---
