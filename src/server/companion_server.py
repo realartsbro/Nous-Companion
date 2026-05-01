@@ -2240,13 +2240,11 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                         audio_b64_str,
                         self.anim._audio.duration_s if self.anim._audio else None,
                     )
-                    self._suppress_frames = True
                     await self._broadcast_audio_to_renderers(
                         wav_bytes,
                         duration_s=self.anim._audio.duration_s if self.anim._audio else None,
                         audio_path=wav_path,
                     )
-                    self._suppress_frames = False
                     print(f"[CMD] Audio sent to renderer ({len(wav_bytes)} byte WAV)", flush=True)
                 except Exception as e:
                     print(f"[CMD] Audio error: {e}", flush=True)
@@ -4005,17 +4003,13 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
 
             await self._broadcast(json.dumps({"type": "status", "status": "playing audio + lip-sync"}))
 
-            self._suppress_frames = True
-            try:
-                # Mark this sequence as played before sending audio
-                self._last_played_seq = seq
-                await self._broadcast_audio_to_renderers(
-                    wav_bytes,
-                    duration_s=duration_s,
-                    audio_path=client_audio_path,
-                )
-            finally:
-                self._suppress_frames = False
+            # Mark this sequence as played before sending audio
+            self._last_played_seq = seq
+            await self._broadcast_audio_to_renderers(
+                wav_bytes,
+                duration_s=duration_s,
+                audio_path=client_audio_path,
+            )
             print(f"[TTS] Audio broadcast ({len(wav_bytes)} byte WAV)", flush=True)
 
             if duration_s:
