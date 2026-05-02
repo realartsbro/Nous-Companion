@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Nous Companion — install script
-# Usage: curl -fsSL https://git.io/nous-companion-install | bash
-# Or:   curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.sh | bash
 
 set -euo pipefail
 

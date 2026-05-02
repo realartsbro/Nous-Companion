@@ -1,6 +1,5 @@
 # Nous Companion — Windows install script
-# Usage: iwr -useb https://git.io/nous-companion-install | iex
-# Or:   iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
+# Usage: iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 
 $Repo = "realartsbro/Nous-Companion"
 $Tag = "v0.1.3"

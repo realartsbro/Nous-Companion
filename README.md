@@ -19,7 +19,7 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 ```
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
+[![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)](https://github.com/realartsbro/Nous-Companion/releases)
 
 ### 🎬 Demo
 
@@ -61,7 +61,7 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 
 ### Option 1 — Browser (for testing only)
 
-> **Note:** The browser tab works for quick testing, but the companion is designed as a desktop app. Use Option 3 or 4 for the full experience (always-on-top, borderless, edge snapping).
+> **Note:** The browser tab works for quick testing, but the companion is designed as a desktop app. Use Options 2, 3, or 4 for the full experience (always-on-top, borderless, edge snapping).
 
 ```bash
 pip install -r requirements.txt

@@ -51,6 +51,7 @@ jobs:
           mkdir -p target/release/characters
           mkdir -p target/release/scripts
           mkdir -p target/release/src
+          mkdir -p target/release/scenes
           cp -r ../characters/nous target/release/characters/
           cp -r ../scripts/run_nous_companion.py target/release/scripts/
           cp -r ../src/server target/release/src/
@@ -60,6 +61,7 @@ jobs:
           cp -r ../src/hermes_runtime.py target/release/src/
           cp ../requirements.txt target/release/
           cp ../scripts/launch-portable.bat target/release/
+          cp -r ../scenes target/release/
           echo "Resources copied for portable build"
 
       - name: Upload build artifacts
@@ -70,6 +72,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/**
             src-tauri/target/release/nous-companion*
+            src-tauri/target/release/launch-portable.bat
             src-tauri/target/release/characters/
             src-tauri/target/release/scripts/
             src-tauri/target/release/src/
