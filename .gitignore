@@ -37,7 +37,12 @@ docs/internal/
 
 # Private/local characters (not for distribution)
 characters-private/
+characters/default/
+characters/mei_ling/
 temp_probe.ps1
+
+# Personal editor configs
+.obsidian/
 
 # Internal development docs — not for public release
 .internal-docs/
