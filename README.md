@@ -11,7 +11,9 @@ _a community project for Hermes Agent ✦_
 ```bash
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.sh | bash
+```
 
+```bash
 # Windows (PowerShell)
 iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 ```
@@ -97,7 +99,9 @@ Or install in one command:
 ```bash
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.sh | bash
+```
 
+```bash
 # Windows (PowerShell)
 iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 ```
