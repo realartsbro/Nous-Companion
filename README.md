@@ -1,10 +1,10 @@
 # ❤ NOUS COMPANION
 
-> _a desktop friend that sits next to your Hermes_
-> _animated portraits · lip-synced TTS · reactive quips_
-> _a community project for Hermes Agent ✦_
-
 > _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
+
+_a desktop friend that sits next to your Hermes_
+_animated portraits · lip-synced TTS · reactive quips_
+_a community project for Hermes Agent ✦_
 
 **Install in one command:**
 
@@ -21,7 +21,7 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 
 ### 🎬 Demo
 
-<a href="https://youtu.be/rHyaEmDmvOY"><img src="https://img.youtube.com/vi/rHyaEmDmvOY/hqdefault.jpg" width="320" alt="▶ Watch the demo video" style="border-radius: 4px;"></a>
+<p align="center"><a href="https://youtu.be/rHyaEmDmvOY"><img src="https://img.youtube.com/vi/rHyaEmDmvOY/hqdefault.jpg" width="320" alt="▶ Watch the demo video" style="border-radius: 4px;"></a></p>
 
 ---
 
