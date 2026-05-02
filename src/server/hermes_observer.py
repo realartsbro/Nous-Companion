@@ -34,6 +34,22 @@ EVENT_SESSION_ENDED = "session_ended"
 LIVE_SESSION_CUTOFF_S = 30 * 60  # 30 minutes
 
 
+def _shorten_path(path: str) -> str:
+    """Shorten a file path for TTS — strip long directory chains."""
+    p = Path(path)
+    try:
+        home = Path.home()
+        if home in p.parents or p == home:
+            p = p.relative_to(home)
+            return f"~/{p.parent.name}/{p.name}"
+    except (ValueError, RuntimeError):
+        pass
+    parts = p.parts
+    if len(parts) > 3:
+        return f".../{parts[-3]}/{parts[-2]}/{parts[-1]}"
+    return str(p)
+
+
 class HermesObserver:
     """Watches Hermes state and emits companion events."""
 
@@ -883,15 +899,20 @@ class HermesObserver:
         # Terminal / shell
         if tool_name in ("terminal", "shell", "bash") and "command" in args:
             cmd = args["command"]
-            # Strip long paths for brevity
             cmd = cmd.replace(str(Path.home()), "~")
             return f"command: {cmd[:80]}"
         # File read
         if tool_name in ("read_file", "file_read") and "path" in args:
-            return f"reading {args['path']}"
+            return f"reading {_shorten_path(str(args['path']))}"
         # File write
         if tool_name in ("write_file", "file_write") and "path" in args:
-            return f"writing {args['path']}"
+            return f"writing {_shorten_path(str(args['path']))}"
+        # Patch
+        if tool_name in ("patch",) and "path" in args:
+            return f"patching {_shorten_path(str(args['path']))}"
+        # Search files
+        if tool_name in ("search_files",) and "pattern" in args:
+            return f"searching for {args['pattern'][:40]}"
         # Web search
         if tool_name in ("web_search", "search") and "query" in args:
             return f"searching: {args['query'][:60]}"

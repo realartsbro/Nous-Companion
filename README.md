@@ -40,11 +40,11 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - **💬 Reactive Quips** — generates in-character one-liners based on what Hermes is doing. Varies sentence structure, uses the character's voice.
 - **🔄 Weighted Idle Expressions** — expressions cycle at random with configurable rarity. Standalone idle frames drop in occasionally for variety.
 - **🎮 Godmode Live Feed** — opens a live text stream of every reaction so you can see her "thinking."
-- **🪟 Borderless Always-on-Top** — sits discreetly on your desktop. Three size tiers: BIG (267px), MEDIUM (150px), SMALL (89px).
+- **🪟 Borderless Always-on-Top** — sits discreetly on your desktop. Three size tiers: BIG, MEDIUM, and SMALL.
 - **🎨 Hermes Mode Chrome** — full-height teal overlay with sweeping brand spotlight, EKG-style audio wave viz, and status animations.
 - **🖼️ Classic Mode** — green-codec bars, retro frequency display.
 - **🔌 Multi-Character System** — switch between character profiles, each with their own expressions, voice references, and personality.
-- **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles. Legacy `.codec-character.zip` imports still supported.
+- **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles. Legacy character format imports still supported.
 
 ![Settings: Quick tab](docs/screenshots/settings_01.png)
 ![Settings: Character tab](docs/screenshots/settings_02.png)
