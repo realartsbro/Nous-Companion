@@ -21,7 +21,7 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 
 ### 🎬 Demo
 
-[![Watch the demo](https://img.youtube.com/vi/rHyaEmDmvOY/maxresdefault.jpg)](https://youtu.be/rHyaEmDmvOY)
+<a href="https://youtu.be/rHyaEmDmvOY"><img src="https://img.youtube.com/vi/rHyaEmDmvOY/hqdefault.jpg" width="320" alt="▶ Watch the demo video" style="border-radius: 4px;"></a>
 
 ---
 
@@ -175,18 +175,6 @@ characters/nous/
 └── _standalones/          # idle-only full frames (no compositing)
 ```
 
----
-
-## 🛠️ For Hermes Users
-
-Nous Companion has a Hermes skill available with setup guides and character documentation:
-
-```bash
-hermes skills install nous-companion
-hermes skill view nous-companion
-```
-
----
 
 ## 📦 Stack
 
