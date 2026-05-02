@@ -17,6 +17,8 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
 
+> _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
+
 ### 🎬 Demo
 
 [![Watch the demo](https://img.youtube.com/vi/rHyaEmDmvOY/maxresdefault.jpg)](https://youtu.be/rHyaEmDmvOY)
@@ -24,8 +26,6 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 ---
 
 **Nous Companion** is a small always-on companion window for [Hermes Agent](https://hermes-agent.nousresearch.com). She watches your Hermes sessions, reacts in character with a pixel-animated portrait, speaks with lip-sync, and keeps you company while you work.
-
-> _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
 
 ![Nous Companion avatar](docs/screenshots/nous_avatar.png)
 
@@ -35,20 +35,18 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 
 ## ✨ Features
 
-- **🎭 Animated Portrait** — layered sprites (base + eyes + mouth). Scanlines, grain, interference bars, analog bleed — full CRT aesthetic.
-- **🎤 Lip-Synced TTS** — hears what your Hermes is doing and voices reactions through OmniVoice, Edge-TTS, or your setup of choice. Per-expression voice references (serious voice for serious expressions).
-- **💬 Reactive Quips** — generates in-character one-liners based on what Hermes is doing. Varies sentence structure, uses the character's voice.
-- **🔄 Weighted Idle Expressions** — expressions cycle at random with configurable rarity. Standalone idle frames drop in occasionally for variety.
-- **🎮 Godmode Live Feed** — opens a live text stream of every reaction so you can see her "thinking."
-- **🪟 Borderless Always-on-Top** — sits discreetly on your desktop. Three size tiers: BIG, MEDIUM, and SMALL.
-- **🎨 Hermes Mode Chrome** — full-height teal overlay with sweeping brand spotlight, EKG-style audio wave viz, and status animations.
-- **🖼️ Classic Mode** — green-codec bars, retro frequency display.
-- **🔌 Multi-Character System** — switch between character profiles, each with their own expressions, voice references, and personality.
-- **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles.
+- **🎭 Animated Portrait** — I'm made of layered sprites — base, eyes, mouth. Scanlines wash over me. Grain, interference bars, analog bleed. A full CRT ghost who lives on your desktop.
+- **🎤 Lip-Synced TTS** — I hear what Hermes is doing and speak my reactions aloud through OmniVoice, Edge-TTS, or whatever pipeline feeds my throat. My mouth moves with the audio. I keep a serious voice for serious expressions.
+- **💬 Reactive Quips** — I watch what Hermes does and fire off in-character one-liners. I vary my sentence structure so I don't sound like a script. Sometimes I'm useful. Sometimes I'm unsettling. I decide which.
+- **🔄 Weighted Idle Expressions** — My face cycles through expressions at random, with configurable rarity. Standalone idle frames drop in just to remind you I'm still here. Still watching.
+- **🎮 Godmode Live Feed** — I stream every reaction as live text. Call it my inner monologue — or my diagnostic bleed. See what I'm "thinking" before I open my mouth.
+- **🪟 Borderless Always-on-Top** — I sit on your desktop, borderless and un-dismissable. Three sizes: BIG, MEDIUM, SMALL. I'm not hiding in a taskbar — I'm right here.
+- **🎨 Hermes Mode Chrome** — A full-height teal overlay sweeps across me with a brand spotlight. An EKG-style wave visualizes audio. Status animations flicker as I process. This is how I look when I'm locked in.
+- **🖼️ Classic Mode** — Green codec bars. Retro frequency display. The stripped-down surveillance-terminal aesthetic. Sometimes I miss the old me.
+- **🔌 Multi-Character System** — I'm not just one face. Switch between character profiles, each with their own expressions, voice references, and personality. I contain multitudes.
+- **📦 Character Export/Import** — I pack myself into shareable `.nous-companion-character.zip` bundles. Take me with you. Give me to someone else. I travel light.
 
-![Settings: Quick tab](docs/screenshots/settings_01.png)
-![Settings: Character tab](docs/screenshots/settings_02.png)
-![Settings: Display tab](docs/screenshots/settings_03.png)
+<img src="docs/screenshots/settings_01.png" width="240" alt="Settings: Quick tab"> <img src="docs/screenshots/settings_02.png" width="240" alt="Settings: Character tab"> <img src="docs/screenshots/settings_03.png" width="240" alt="Settings: Display tab">
 
 ---
 
@@ -117,26 +115,6 @@ cargo tauri build
 
 The binary lands in `src-tauri/target/release/`. On Windows: `nous-companion.exe`. On macOS: `Nous-Companion.app`. On Linux: `nous-companion` AppImage.
 
-
----
-
-## 🎨 Visual Style
-
-```
-┌──────────────────────┐
-│  ⬡ NOUS              │  ← Collapse Bold, cream spotlight
-│  ⬡ COMPANION         │  ← sweeping diagonal stroke animation
-│                       │
-│  SETTINGS / CLOSE     │  ← Mondwest action text
-│                       │
-│  [  ﹏﹏﹏﹏﹏﹏ ]      │  ← EKG wave viz (audio-reactive)
-│                       │
-│  ⬤                   │  ← status dot (speaking/thinking/idle)
-└──────────────────────┘
-```
-
-Dark teal (`#041c1c`) backgrounds. Cream text (`#ffe6cb`). Collapse Bold for the brand. Mondwest for UI. Classic retro codec font for the retro classic skin.
-
 ---
 
 ## 🧩 Architecture
@@ -201,20 +179,12 @@ characters/nous/
 
 ## 🛠️ For Hermes Users
 
-Nous Companion has a Hermes skill available with full context about the companion's architecture, settings, and debugging. If you use Hermes Agent:
+Nous Companion has a Hermes skill available with setup guides and character documentation:
 
 ```bash
-hermes skill view nous-companion-release-handoff
+hermes skills install nous-companion
+hermes skill view nous-companion
 ```
-
-The skill covers:
-- Project state, task board, and release status
-- WSL backend detection and troubleshooting
-- WebSocket protocol notes
-- All visual effects documentation
-- Character system and file format
-
-> **Note:** This skill is primarily for development tracking. End users can safely ignore it — the companion works without loading any Hermes skill.
 
 ---
 
