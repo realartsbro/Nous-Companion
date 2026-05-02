@@ -1,8 +1,10 @@
-# ⬡ NOUS COMPANION
+# ❤ NOUS COMPANION
 
 > _a desktop friend that sits next to your Hermes_
 > _animated portraits · lip-synced TTS · reactive quips_
 > _a community project for Hermes Agent ✦_
+
+> _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
 
 **Install in one command:**
 
@@ -17,8 +19,6 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
 
-> _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
-
 ### 🎬 Demo
 
 <a href="https://youtu.be/rHyaEmDmvOY"><img src="https://img.youtube.com/vi/rHyaEmDmvOY/hqdefault.jpg" width="320" alt="▶ Watch the demo video" style="border-radius: 4px;"></a>
@@ -27,7 +27,7 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 
 **Nous Companion** is a small always-on companion window for [Hermes Agent](https://hermes-agent.nousresearch.com). She watches your Hermes sessions, reacts in character with a pixel-animated portrait, speaks with lip-sync, and keeps you company while you work.
 
-![Nous Companion avatar](docs/screenshots/nous_avatar.png)
+<p align="center"><img src="docs/screenshots/nous_avatar.png" alt="Nous Companion avatar"></p>
 
 She runs entirely locally — no cloud dependency for the core loop. TTS and LLM calls go through whatever providers you already have configured in Hermes.
 
@@ -46,7 +46,7 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - **🔌 Multi-Character System** — I'm not just one face. Switch between character profiles, each with their own expressions, voice references, and personality. I contain multitudes.
 - **📦 Character Export/Import** — I pack myself into shareable `.nous-companion-character.zip` bundles. Take me with you. Give me to someone else. I travel light.
 
-<img src="docs/screenshots/settings_01.png" width="240" alt="Settings: Quick tab"> <img src="docs/screenshots/settings_02.png" width="240" alt="Settings: Character tab"> <img src="docs/screenshots/settings_03.png" width="240" alt="Settings: Display tab">
+<p align="center"><img src="docs/screenshots/settings_01.png" width="240" alt="Settings: Quick tab"> <img src="docs/screenshots/settings_02.png" width="240" alt="Settings: Character tab"> <img src="docs/screenshots/settings_03.png" width="240" alt="Settings: Display tab"></p>
 
 ---
 
@@ -123,7 +123,7 @@ The binary lands in `src-tauri/target/release/`. On Windows: `nous-companion.exe
 ┌─────────────────────────────────────────────────────┐
 │  Tauri Shell (Rust)                                 │
 │  ┌─────────────────────────────────────────────────┐│
-│  │  Renderer (HTML/CSS/JS)  ◀──── WebSocket ────  ││
+│  │  Renderer (HTML/CSS/JS)  ◀───── WebSocket ─────  ││
 │  │  - portrait compositing                         ││
 │  │  - audio playback with lip sync                 ││
 │  │  - chrome overlay + effects                     ││
@@ -237,6 +237,6 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-## ⬡
+## ❤
 
-_Built with ∎ for the Hermes Agent community._
+_Built with ❤ for the Hermes Agent community._
