@@ -254,7 +254,7 @@ class CompanionServer:
             "show_tool_details": True,     # show "reading file.py" vs just "working..."
             "idle_lines_enabled": True,     # spontaneous idle lines after inactivity
             "playback_volume": 0.8,        # shared playback volume for live + settings replay
-            "chrome_style": "hermes",     # "classic" (MGS1) | "hermes" (dashboard-inspired)
+            "chrome_style": "hermes",     # "classic" (Retro Codec) | "hermes" (dashboard-inspired)
             "show_indicator_dot": False,  # show the status dot on the main window
             "show_scanlines": True,       # CRT scanline overlay
             "show_grain": True,           # film grain noise

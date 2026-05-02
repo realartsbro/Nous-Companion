@@ -13,8 +13,8 @@ html, body {
 }
 
 @font-face {
-  font-family: 'MGS1 Codec';
-  src: url('../assets/fonts/MGS1-Codec.ttf') format('truetype');
+  font-family: 'Retro Codec';
+  src: url('../assets/fonts/retro-codec.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
@@ -50,7 +50,7 @@ html, body {
   --font-nav: 'Mondwest', sans-serif;
   --font-ui: 'Mondwest', 'Segoe UI', sans-serif;
   --font-body: 'Mondwest', 'Segoe UI', sans-serif;
-  --font-classic: 'MGS1 Codec', 'Courier New', monospace;
+  --font-classic: 'Retro Codec', 'Courier New', monospace;
 }
 
 ::-webkit-scrollbar { display: none; }

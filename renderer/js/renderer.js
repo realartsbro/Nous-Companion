@@ -333,7 +333,7 @@
   let typewriterTimer = null;
   let currentPortraitWidth = 187;  // tracks active sprite width for window resize
   let currentDisplayMode = "stretch";  // stretch | fit | cover | original
-  let currentChromeStyle = "hermes";  // "hermes" (dashboard-inspired) | "classic" (MGS1)
+  let currentChromeStyle = "hermes";  // "hermes" (dashboard-inspired) | "classic" (Retro Codec)
   let pendingFrameBase64 = null;
   let lastFrameBase64 = null;  // cache for instant redraw after resize
   let analogBleedEnabled = true;

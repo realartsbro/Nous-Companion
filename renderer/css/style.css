@@ -12,8 +12,8 @@ html, body {
 }
 
 @font-face {
-  font-family: 'MGS1 Codec';
-  src: url('../assets/fonts/MGS1-Codec.ttf') format('truetype');
+  font-family: 'Retro Codec';
+  src: url('../assets/fonts/retro-codec.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
@@ -60,7 +60,7 @@ html { scrollbar-width: none; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .label {
-  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-family: 'Retro Codec', 'Courier New', monospace;
   font-size: 20px;
   color: rgba(122,170,150,0.88);
   letter-spacing: 0.8px;
@@ -93,7 +93,7 @@ html { scrollbar-width: none; }
 
 .settings-cog {
   color: rgba(122,170,150,0.56);
-  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-family: 'Retro Codec', 'Courier New', monospace;
   font-size: 11px;
 }
 .settings-cog:hover { color: rgba(122,170,150,0.95); }
@@ -101,7 +101,7 @@ html { scrollbar-width: none; }
 
 .window-close {
   color: rgba(205,120,120,0.68);
-  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-family: 'Retro Codec', 'Courier New', monospace;
   font-size: 11px;
 }
 .window-close:hover { color: rgba(255,120,120,0.95); }
@@ -160,7 +160,7 @@ html { scrollbar-width: none; }
 }
 
 .freq {
-  font-family: 'MGS1 Codec', 'Courier New', monospace;
+  font-family: 'Retro Codec', 'Courier New', monospace;
   font-size: 20px;
   color: rgba(122,170,150,0.76);
   letter-spacing: 0.8px;
