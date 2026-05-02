@@ -35,7 +35,7 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 
 ## ✨ Features
 
-- **🎭 Animated Portrait** — layered sprites (base + eyes + mouth) composited at 30 fps. Scanlines, grain, interference bars, analog bleed — full CRT aesthetic.
+- **🎭 Animated Portrait** — layered sprites (base + eyes + mouth). Scanlines, grain, interference bars, analog bleed — full CRT aesthetic.
 - **🎤 Lip-Synced TTS** — hears what your Hermes is doing and voices reactions through OmniVoice, Edge-TTS, or your setup of choice. Per-expression voice references (serious voice for serious expressions).
 - **💬 Reactive Quips** — generates in-character one-liners based on what Hermes is doing. Varies sentence structure, uses the character's voice.
 - **🔄 Weighted Idle Expressions** — expressions cycle at random with configurable rarity. Standalone idle frames drop in occasionally for variety.
@@ -44,7 +44,7 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - **🎨 Hermes Mode Chrome** — full-height teal overlay with sweeping brand spotlight, EKG-style audio wave viz, and status animations.
 - **🖼️ Classic Mode** — green-codec bars, retro frequency display.
 - **🔌 Multi-Character System** — switch between character profiles, each with their own expressions, voice references, and personality.
-- **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles. Legacy character format imports still supported.
+- **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles.
 
 ![Settings: Quick tab](docs/screenshots/settings_01.png)
 ![Settings: Character tab](docs/screenshots/settings_02.png)
@@ -117,13 +117,6 @@ cargo tauri build
 
 The binary lands in `src-tauri/target/release/`. On Windows: `nous-companion.exe`. On macOS: `Nous-Companion.app`. On Linux: `nous-companion` AppImage.
 
----
-
-## 🎯 Hackathon: Creative Track + Kimi Track
-
-Nous Companion is built for the **Hermes Agent Creative Hackathon**. Here's how we qualify:
-
-For the **Kimi Track**, the companion's LLM provider can be set to any Kimi model via the System → Model dropdown in settings. The companion routes LLM calls directly (bypassing Hermes proxy) for lower latency — just select a Kimi model and your submission video shows it in action.
 
 ---
 
