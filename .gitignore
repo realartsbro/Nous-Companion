@@ -41,3 +41,8 @@ temp_probe.ps1
 
 # Internal development docs — not for public release
 .internal-docs/
+
+# Fonts — bundled font protected by .gitignore, served from Hermes install
+renderer/assets/fonts/Collapse-*.woff2
+renderer/assets/fonts/Mondwest-*.woff2
+renderer/assets/fonts/MGS1*.ttf
