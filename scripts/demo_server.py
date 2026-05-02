@@ -10,17 +10,11 @@ Usage:
 
 import sys
 import asyncio
-import logging
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from server.companion_server import CompanionServer
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-)
 
 CHAR_DIR = Path(__file__).resolve().parent.parent / "characters" / "default" / "campbell2"
 

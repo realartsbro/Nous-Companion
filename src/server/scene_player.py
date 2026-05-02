@@ -21,7 +21,7 @@ import wave
 from pathlib import Path
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("nous_companion.scene_player")
 
 
 class ScenePlayer:
@@ -190,9 +190,9 @@ class ScenePlayer:
         # Broadcast scene_loaded event to all connected clients
         await self._emit({"type": "scene_loaded", **result})
 
-        self._server._debug_log(
-            f"[SCENE] Loaded \"{meta.get('title', path)}\": "
-            f"{len(scenes)} scenes, {pre_gen_ok} TTS OK, {pre_gen_fail} failed"
+        logger.info(
+            "[SCENE] Loaded \"%s\": %d scenes, %d TTS OK, %d failed",
+            meta.get('title', path), len(scenes), pre_gen_ok, pre_gen_fail
         )
 
         return result
@@ -223,9 +223,9 @@ class ScenePlayer:
 
         self._play_task = asyncio.create_task(self._playback_loop())
 
-        self._server._debug_log(
-            f"[SCENE] Play started (resuming from scene {self._current_scene_index}, "
-            f"elapsed={self._paused_elapsed:.2f}s)"
+        logger.info(
+            "[SCENE] Play started (resuming from scene %d, elapsed=%.2fs)",
+            self._current_scene_index, self._paused_elapsed
         )
 
         return {"ok": True, "state": self._state, "scene_count": len(self._scenes)}
@@ -251,9 +251,9 @@ class ScenePlayer:
         )
         self._server._invalidate_frame_signature()
 
-        self._server._debug_log(
-            f"[SCENE] Paused at scene {self._current_scene_index}, "
-            f"elapsed={self._paused_elapsed:.2f}s"
+        logger.info(
+            "[SCENE] Paused at scene %d, elapsed=%.2fs",
+            self._current_scene_index, self._paused_elapsed
         )
 
         return {"ok": True, "state": self._state, "elapsed": self._paused_elapsed}
@@ -279,7 +279,7 @@ class ScenePlayer:
         )
         self._server._invalidate_frame_signature()
 
-        self._server._debug_log("[SCENE] Stopped and reset")
+        logger.info("[SCENE] Stopped and reset")
 
         return {"ok": True, "state": self._state}
 
@@ -401,9 +401,9 @@ class ScenePlayer:
                     "action": action,
                 }
                 await self._emit(cue_event)
-                self._server._debug_log(
-                    f"[SCENE] Cue {i} @ {cue_time:.1f}s: expr={expression} "
-                    f"line=\"{line[:50]}{'...' if len(line) > 50 else ''}\""
+                logger.debug(
+                    "[SCENE] Cue %d @ %.1fs: expr=%s line=\"%s\"", i, cue_time,
+                    expression, line[:50] + ("..." if len(line) > 50 else "")
                 )
 
                 # ── Play TTS audio ─────────────────────────────────── #
@@ -424,9 +424,7 @@ class ScenePlayer:
                         "elapsed": round(elapsed_now, 3),
                     }
                     await self._emit(overlay_event)
-                    self._server._debug_log(
-                        f"[SCENE] Overlay: \"{overlay_text}\""
-                    )
+                    logger.debug("[SCENE] Overlay: \"%s\"", overlay_text)
 
             # ── All scenes complete ────────────────────────────────── #
             if self._state == self.STATE_PLAYING:
@@ -437,9 +435,9 @@ class ScenePlayer:
                     "elapsed": round(total_elapsed, 3),
                     "scene_count": len(self._scenes),
                 })
-                self._server._debug_log(
-                    f"[SCENE] Complete — {len(self._scenes)} scenes in "
-                    f"{total_elapsed:.1f}s"
+                logger.info(
+                    "[SCENE] Complete — %d scenes in %.1fs",
+                    len(self._scenes), total_elapsed
                 )
 
         except asyncio.CancelledError:
@@ -481,13 +479,15 @@ class ScenePlayer:
         # Broadcast audio to all renderer clients
         self._in_audio_block = True
         self._server._suppress_frames = True
-        await self._server._broadcast_audio_to_renderers(
-            wav_bytes,
-            duration_s=duration_s,
-            audio_path=server_path,
-        )
-        self._server._suppress_frames = False
-        self._in_audio_block = False
+        try:
+            await self._server._broadcast_audio_to_renderers(
+                wav_bytes,
+                duration_s=duration_s,
+                audio_path=server_path,
+            )
+        finally:
+            self._server._suppress_frames = False
+            self._in_audio_block = False
 
         # Wait for audio to finish playing (broken early if paused/stopped)
         await self._wait_duration(duration_s)

@@ -1102,6 +1102,14 @@ async fn open_app_folder(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn open_debug_log_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let base = app.path().app_data_dir().map_err(|_| "app data dir".to_string())?;
+    let log_dir = base.join("nous-companion");
+    fs::create_dir_all(&log_dir).map_err(|e| e.to_string())?;
+    open_in_system(&log_dir.to_string_lossy())
+}
+
+#[tauri::command]
 async fn open_external_url(url: String) -> Result<(), String> {
     open_in_system(&url)
 }
@@ -1316,6 +1324,7 @@ fn main() {
             suggested_export_path,
             write_base64_file,
             open_app_folder,
+            open_debug_log_folder,
             open_external_url,
             pick_directory,
         ])

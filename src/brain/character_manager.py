@@ -406,36 +406,45 @@ class CharacterManager:
                 config["speech_allowed"] = data["speech_allowed"]
                 print(f"[SAVE-CM] Writing speech_allowed: {data['speech_allowed']}", flush=True)
 
-            # Portrait: decode base64 and save
+            # Portrait: decode base64 and save with size limit
             portrait_b64 = data.get("portrait_b64", "")
             if portrait_b64:
                 # Strip data URL prefix if present
                 if "," in portrait_b64:
                     portrait_b64 = portrait_b64.split(",", 1)[1]
-                portrait_bytes = base64.b64decode(portrait_b64)
-                ext = "png"  # default
-                if portrait_bytes[:4] == b"\xff\xd8\xff\xe0" or portrait_bytes[:4] == b"\xff\xd8\xff\xe1":
-                    ext = "jpg"
-                elif portrait_bytes[:4] == b"RIFF":
-                    ext = "webp"
-                portrait_filename = f"portrait.{ext}"
-                portrait_path = char_dir / portrait_filename
-                portrait_path.write_bytes(portrait_bytes)
-                config["portrait"] = portrait_filename
-                logger.info(f"Saved portrait for {char_id}: {portrait_filename} ({len(portrait_bytes)} bytes)")
+                # Check decoded size before decoding to avoid memory bomb
+                decoded_estimate = len(portrait_b64) * 3 // 4
+                if decoded_estimate > 10_000_000:  # ~10MB decoded
+                    logger.warning(f"Portrait too large (~{decoded_estimate} bytes), skipping")
+                else:
+                    portrait_bytes = base64.b64decode(portrait_b64)
+                    ext = "png"  # default
+                    if portrait_bytes[:4] == b"\xff\xd8\xff\xe0" or portrait_bytes[:4] == b"\xff\xd8\xff\xe1":
+                        ext = "jpg"
+                    elif portrait_bytes[:4] == b"RIFF":
+                        ext = "webp"
+                    portrait_filename = f"portrait.{ext}"
+                    portrait_path = char_dir / portrait_filename
+                    portrait_path.write_bytes(portrait_bytes)
+                    config["portrait"] = portrait_filename
+                    logger.info(f"Saved portrait for {char_id}: {portrait_filename} ({len(portrait_bytes)} bytes)")
 
-            # Voice reference audio: decode base64 and save
+            # Voice reference audio: decode base64 and save with size limit
             voice_b64 = data.get("voice_b64", "")
             if voice_b64:
                 if "," in voice_b64:
                     voice_b64 = voice_b64.split(",", 1)[1]
-                voice_bytes = base64.b64decode(voice_b64)
-                voice_filename = data.get("voice_filename", "voice_ref.wav")
-                voice_path = char_dir / voice_filename
-                voice_path.write_bytes(voice_bytes)
-                config["voice"] = config.get("voice", {})
-                config["voice"]["reference_audio"] = voice_filename
-                logger.info(f"Saved voice ref for {char_id}: {voice_filename} ({len(voice_bytes)} bytes)")
+                voice_estimate = len(voice_b64) * 3 // 4
+                if voice_estimate > 5_000_000:  # ~5MB decoded
+                    logger.warning(f"Voice reference too large (~{voice_estimate} bytes), skipping")
+                else:
+                    voice_bytes = base64.b64decode(voice_b64)
+                    voice_filename = data.get("voice_filename", "voice_ref.wav")
+                    voice_path = char_dir / voice_filename
+                    voice_path.write_bytes(voice_bytes)
+                    config["voice"] = config.get("voice", {})
+                    config["voice"]["reference_audio"] = voice_filename
+                    logger.info(f"Saved voice ref for {char_id}: {voice_filename} ({len(voice_bytes)} bytes)")
 
             # Sprite files: decode base64 and save to _group/ folders
             sprite_files = data.get("sprite_files", {})
@@ -474,6 +483,9 @@ class CharacterManager:
                     file_b64 = file_b64.split(",", 1)[1]
                 try:
                     file_bytes = base64.b64decode(file_b64)
+                    if len(file_bytes) > 5_000_000:  # 5MB limit per sprite
+                        logger.warning(f"Sprite too large ({len(file_bytes)} bytes), skipping {rel_path}")
+                        continue
                     # Convert any image format to PNG for consistency
                     from PIL import Image
                     import io
@@ -501,7 +513,7 @@ class CharacterManager:
                 try:
                     resolved = file_path.resolve()
                     resolved_root = sprite_save_root.resolve()
-                    if not str(resolved).startswith(str(resolved_root)):
+                    if not (resolved == resolved_root or resolved_root in resolved.parents):
                         logger.warning(f"Delete path escapes sprite root: {rel_path}")
                         continue
                 except Exception:
@@ -535,6 +547,9 @@ class CharacterManager:
                         file_b64 = file_b64.split(",", 1)[1]
                     try:
                         file_bytes = base64.b64decode(file_b64)
+                        if len(file_bytes) > 5_000_000:  # 5MB limit per expression voice
+                            logger.warning(f"Expression voice too large ({len(file_bytes)} bytes), skipping {expr_name}")
+                            continue
                         # Strip underscore prefix so filename and config key
                         # match the compositor's expression names (e.g. "cheerful" not "_cheerful")
                         clean_name = expr_name.lstrip("_")

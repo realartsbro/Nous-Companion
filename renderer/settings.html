@@ -182,7 +182,7 @@
                 <span id="editor-mouth-close-val" class="slider-value">0.18</span>
               </div>
               <div class="slider-row">
-                <span class="slider-label">Flap interval</span>
+                <span class="slider-label">Lip-sync speed</span>
                 <input type="range" id="editor-flap-interval" class="nous-slider" min="50" max="500" step="10" value="180">
                 <span id="editor-flap-interval-val" class="slider-value">180</span>
               </div>
@@ -467,7 +467,7 @@
             <div class="about-divider"></div>
 
             <div class="about-desc">
-              I live in your sessions, react to your chaos, and tease you about your tabs — all in real time. You're absolutely welcome.
+              I live in your sessions, react to your chaos, and tease you about your tabs — all in real time.<br>You're absolutely welcome.
             </div>
 
             <div class="about-actions">
@@ -481,13 +481,16 @@
                 </span>
               </a>
               <span class="about-link-sep">/</span>
-              <button id="btn-open-app-folder" class="about-link-btn">Open App Folder</button>
+              <button id="btn-open-log-folder" class="about-link-btn">Open Logs</button>
             </div>
+
+            <p class="about-disclaimer">
+              <span class="about-disclaimer-label">Disclaimer:</span>
+              Nous Companion is an independent community project. &ldquo;Nous&rdquo; is used with informal permission from <a class="about-link" data-url="https://nousresearch.com/">Nous Research</a>. Built for <a class="about-link" data-url="https://hermes-agent.nousresearch.com/">Hermes Agent</a>.
+            </p>
 
           </div>
         </div>
-
-      </div>
     </div>
   </div>
 
@@ -1318,19 +1321,27 @@
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .session-status::before {
+          content: "";
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          background: var(--outline);
+          border-radius: 50%;
+          flex-shrink: 0;
+          opacity: 0.4;
+          transition: background 0.3s, opacity 0.3s;
         }
         .session-status.live {
           color: var(--secondary);
         }
         .session-status.live::before {
-          content: "";
-          display: inline-block;
-          width: 6px;
-          height: 6px;
           background: var(--secondary);
-          border-radius: 50%;
-          margin-right: 5px;
-          vertical-align: -2px;
+          opacity: 1;
           animation: blink 1.5s step-end infinite;
         }
 
@@ -1646,7 +1657,7 @@
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 0;
+          position: relative;
           padding: 0 20px;
         }
         .about-title {
@@ -1719,7 +1730,36 @@
           line-height: 1.6;
           color: var(--on-surface-variant);
           text-align: center;
-          max-width: 380px;
+        }
+        .about-disclaimer {
+          position: absolute;
+          bottom: 12px;
+          left: 20px;
+          right: 20px;
+          font-family: var(--font-body);
+          font-size: 10px;
+          line-height: 1.5;
+          color: var(--outline);
+          text-align: center;
+          max-width: 360px;
+          margin: 0 auto;
+          white-space: normal;
+        }
+        .about-disclaimer-label {
+          font-family: var(--font-nav);
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: var(--outline-variant);
+        }
+        .about-disclaimer .about-link {
+          font-family: inherit;
+          font-size: inherit;
+          color: var(--outline);
+          text-decoration: none;
+        }
+        .about-disclaimer .about-link:hover {
+          color: var(--secondary);
         }
         .about-actions {
           display: flex;
@@ -1762,6 +1802,29 @@
         }
         .about-link-btn:hover {
           color: var(--bone);
+        }
+        .about-debug-log {
+          margin-top: 12px;
+        }
+        .about-debug-label {
+          font-family: var(--font-nav);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: var(--outline);
+          display: block;
+          margin-bottom: 4px;
+        }
+        .about-debug-path {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--outline-variant);
+          word-break: break-all;
+          display: block;
+          margin-bottom: 6px;
+        }
+        #btn-copy-debug-path {
+          font-size: 11px;
         }
         .strike-replace {
           position: relative;
@@ -2658,6 +2721,26 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
+    .sidebar-action {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 4px 0;
+      font-family: var(--font-nav);
+      font-size: 11px;
+      color: var(--outline);
+      background: none;
+      border: none;
+      border-top: 1px solid var(--divider);
+      cursor: pointer;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      text-align: left;
+      transition: color 0.2s;
+    }
+    .sidebar-action:hover {
+      color: var(--secondary);
+    }
 
     /* ══════════════════════════════════════════
        MODAL OVERLAY
@@ -3504,6 +3587,24 @@
         case "runtime_config":
           if (data.runtime) {
             applyRuntimeState(data.runtime, !!data.saved);
+          }
+          break;
+        case "log_folder_path":
+          if (data.path && window.__TAURI__?.core?.invoke) {
+            window.__TAURI__.core.invoke("open_path", { path: data.path });
+          }
+          break;
+        case "debug_log":
+          if (data.content) {
+            const blob = new Blob([data.content], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "nous-companion-debug.log";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
           }
           break;
         case "character_saved":
@@ -5493,7 +5594,18 @@ function buildRing() {
     }
 
     // Page navigation
-    function showPage(pageId) {
+    async function showPage(pageId) {
+      // ── Unsaved changes guard: warn when leaving CHARACTER page with dirty state ──
+      if (currentPageId === 'character' && pageId !== 'character') {
+        if (window._isCharacterEditorDirty && window._isCharacterEditorDirty()) {
+          const discard = await Modal.confirm(
+            "You have unsaved changes on the CHARACTER page. Leave without saving?",
+            "UNSAVED CHANGES"
+          );
+          if (!discard) return;
+        }
+      }
+
       currentPageId = pageId;
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -5758,6 +5870,12 @@ function buildRing() {
           btnModelRefresh.disabled = true;
           _modelRefreshInProgress = true;
           send("get_models", { force: true });
+        });
+      }
+      const btnOpenLogFolder = document.getElementById("btn-open-log-folder");
+      if (btnOpenLogFolder) {
+        btnOpenLogFolder.addEventListener("click", () => {
+          send("open_log_folder", {});
         });
       }
 

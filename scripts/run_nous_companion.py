@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import os
 import sys
 from pathlib import Path
@@ -43,6 +42,18 @@ def _start_http_server(host: str, http_port: int) -> None:
     class Handler(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(_RENDERER_DIR), **kwargs)
+
+        def do_GET(self):
+            if self.path == "/api/debug-log":
+                from utils.log_config import get_log_text
+                content = get_log_text()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(content.encode("utf-8"))
+                return
+            super().do_GET()
 
         def log_message(self, fmt, *args):
             pass  # suppress request logs — the WS server handles logging
@@ -84,7 +95,9 @@ def main() -> None:
     if args.http_port:
         _start_http_server(args.host, args.http_port)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(errors="replace")
+        sys.stderr.reconfigure(errors="replace")
     server = CompanionServer(
         character_dir=args.character_dir,
         hermes_home=args.hermes_home,

@@ -66,6 +66,9 @@ class AnimationController:
         # Callback to send frames
         self._send_callback = None
 
+        # Flap interval: min ms between mouth sprite changes during speech
+        self._last_mouth_change_time: float = 0.0
+
     def set_expression(self, expression: str):
         """Switch to a different expression group with smooth crossfade."""
         if expression == self.expression:
@@ -77,6 +80,7 @@ class AnimationController:
             self.expression = expression
             # Reset mouth state when changing expression
             self._last_mouth_index = -1
+            self._last_mouth_change_time = 0.0
             self.mouth_open = 0.0
             logger.debug(f"Expression transition: {self._transition_from} → {expression}")
         else:
@@ -91,6 +95,7 @@ class AnimationController:
         self.mouth_open = 0.0
         self.eye_index = -1
         self._last_mouth_index = -1
+        self._last_mouth_change_time = 0.0
         self._audio_playing = False
         self._audio_frame = 0
         self._audio_start_time = 0
@@ -316,6 +321,20 @@ class AnimationController:
             t = t ** 0.7  # slight curve: low values still get some sprite index
             result = int(t * (mouth_count - 1))
             result = min(result, mouth_count - 1)
+
+        # ── Flap interval cooldown: hold current sprite for at least
+        # flap_interval_ms before switching to a new one.
+        flap_ms = getattr(self, 'flap_interval_ms', 180)
+        try:
+            flap_ms = float(flap_ms)
+        except (TypeError, ValueError):
+            flap_ms = 0.0
+        if flap_ms > 0 and result != current_index:
+            elapsed_ms = (time.monotonic() - self._last_mouth_change_time) * 1000
+            if elapsed_ms < flap_ms:
+                return current_index  # cooldown not elapsed — hold position
+        if result != current_index:
+            self._last_mouth_change_time = time.monotonic()
 
         self._last_mouth_index = result
         return result

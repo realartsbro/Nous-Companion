@@ -91,14 +91,30 @@ install_platform() {
                 # Fall back to AppImage
                 exe="$(find "$INSTALL_DIR" -maxdepth 2 -name '*.AppImage' -type f 2>/dev/null | head -1)"
             fi
+            if [ -n "$exe" ]; then
+                mkdir -p "$BIN_DIR"
+                ln -sf "$exe" "$BIN_DIR/nous-companion" 2>/dev/null || true
+                echo "  Binary linked: nous-companion"
+            else
+                echo "  WARNING: Could not find binary"
+            fi
             ;;
         macos)
             # Look for .app bundle
             local app
+            local exe=""
             app="$(find "$INSTALL_DIR" -maxdepth 3 -name '*.app' -type d 2>/dev/null | head -1)"
             if [ -n "$app" ]; then
-                ln -sf "$app" "$BIN_DIR/Nous-Companion.app" 2>/dev/null || true
-                echo "  App bundle: $app"
+                # Link the inner binary so 'nous-companion' works from terminal
+                exe="$app/Contents/MacOS/nous-companion"
+                if [ -f "$exe" ]; then
+                    mkdir -p "$BIN_DIR"
+                    ln -sf "$exe" "$BIN_DIR/nous-companion" 2>/dev/null || true
+                    echo "  App bundle: $app"
+                    echo "  Binary linked: nous-companion"
+                else
+                    echo "  App bundle found but inner binary missing: $app"
+                fi
             else
                 echo "  WARNING: Could not find .app bundle"
             fi

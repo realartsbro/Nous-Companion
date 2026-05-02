@@ -66,6 +66,7 @@ class HermesObserver:
         self._emitted_ended_for: set[str] = set()  # sessions we've already emitted EVENT_SESSION_ENDED for
         self._ENDED_CACHE_TTL: float = 10.0  # seconds
         self._session_meta_cache: dict[str, dict] = {}
+        # ── Per-file stat cache ──
         self._debug_poll: bool = os.environ.get(
             "CODEC_DEBUG_POLL", ""
         ).strip().lower() in {"1", "true", "yes", "on"}
@@ -98,6 +99,12 @@ class HermesObserver:
     def _set_last_mtime(self, value: float):
         if self._current_session_file:
             self._session_last_mtimes[self._current_session_file.name] = value
+
+    @staticmethod
+    def _read_session_json(path: Path) -> dict:
+        """Read and parse a session JSON file (blocking I/O helper)."""
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
 
     @staticmethod
     def _file_mtime(path: Optional[Path]) -> float:
@@ -188,6 +195,13 @@ class HermesObserver:
         mtime changes; repeated list/auto-follow scans reuse cached metadata.
         """
         ended_sessions = self._get_ended_sessions()
+
+        # ── Per-file stat cache ──
+        # Reuse cached metadata for files whose (mtime_ns, size) hasn't changed.
+        # The expensive JSON parse happens only when a session file's size or
+        # mtime changes; repeated list/auto-follow scans reuse cached metadata.
+        # The full glob+stat+parse is run in asyncio.to_thread() from callers
+        # to keep it off the event loop.
         inventory: list[dict] = []
         seen_names: set[str] = set()
 
@@ -213,7 +227,7 @@ class HermesObserver:
                 record["is_ended"] = record.get("id") in ended_sessions
             else:
                 try:
-                    data = json.loads(session_file.read_text())
+                    data = json.loads(session_file.read_text(encoding="utf-8"))
                 except Exception:
                     continue
                 record = self._build_session_record(session_file, data, stat, ended_sessions)
@@ -349,7 +363,7 @@ class HermesObserver:
                 pass
         return 0.0
 
-    def list_sessions(self, live_only: bool = True) -> list[dict]:
+    async def list_sessions(self, live_only: bool = True) -> list[dict]:
         """List available session files with metadata.
 
         By default only returns "live" sessions — those with recent conversation
@@ -358,7 +372,8 @@ class HermesObserver:
         recently active one).
         """
         raw_sessions: list[tuple[dict, float]] = []
-        for record in self._get_session_inventory():
+        inventory = await asyncio.to_thread(self._get_session_inventory)
+        for record in inventory:
             if record["is_companion"] or record["is_ended"] or record["is_curator"]:
                 continue
             raw_sessions.append(({
@@ -427,12 +442,12 @@ class HermesObserver:
         self._find_active_session()
         logger.info("Unwatched — now auto-following latest session")
 
-    def get_current_context(self, max_messages: int = 6) -> list[dict]:
+    async def get_current_context(self, max_messages: int = 6) -> list[dict]:
         """Read the last N messages from the watched session."""
         if not self._current_session_file or not self._current_session_file.exists():
             return []
         try:
-            data = json.loads(self._current_session_file.read_text())
+            data = await asyncio.to_thread(self._read_session_json, self._current_session_file)
             messages = data.get("messages", [])
             return [{"role": m.get("role"), "content": str(m.get("content", ""))[:800]}
                     for m in messages[-max_messages:]]
@@ -554,7 +569,10 @@ class HermesObserver:
             f"last_count={self._last_count()}  last_mtime={self._last_mtime()}"
         )
 
-        all_inventory: Optional[list[dict]] = None
+        # ── Inventory scan at top so it runs once per poll ──
+        # The per-file stat cache (in _get_session_inventory) prevents re-parsing
+        # session files that haven't changed on disk.
+        all_inventory = self._get_session_inventory()
         inventory: Optional[list[dict]] = None
 
         # Determine which session file to watch
@@ -565,7 +583,6 @@ class HermesObserver:
                     self._watched_session_id = None
                     self._find_active_session()
         else:
-            all_inventory = self._get_session_inventory()
             inventory = [r for r in all_inventory if not r["is_companion"] and not r["is_ended"]]
             if not inventory:
                 self._trace_poll("[POLL] No session files found")
@@ -643,10 +660,7 @@ class HermesObserver:
             return
 
         # Check if the currently watched session has ended — if so, force a switch on next poll
-        current_record = self._record_for_path(
-            all_inventory if all_inventory is not None else self._get_session_inventory(),
-            self._current_session_file,
-        )
+        current_record = self._record_for_path(all_inventory, self._current_session_file)
         if current_record and current_record["is_ended"]:
             sid = current_record.get("id") or self._watched_session_id or ""
             if sid and sid not in self._emitted_ended_for:
@@ -685,8 +699,7 @@ class HermesObserver:
         # otherwise the observer skips this file forever.
 
         try:
-            with open(self._current_session_file) as f:
-                data = json.load(f)
+            data = await asyncio.to_thread(self._read_session_json, self._current_session_file)
 
             message_count = data.get("message_count", 0)
             messages = data.get("messages", [])

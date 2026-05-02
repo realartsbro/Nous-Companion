@@ -13,7 +13,7 @@ voice:
 animation:
   speaking_cycle:
   - speaking
-  flap_interval_ms: 180
+  flap_interval_ms: 80
   mouth_open_threshold: 0.35
   mouth_close_threshold: 0.18
 offsets:
@@ -40,16 +40,6 @@ offsets:
     - 0
 display_mode: cover
 sprite_order:
-  _normal:
-    base: sprite-base.png
-    eyes:
-    - normal_eyes_full.png
-    - normal_eyes_half.png
-    mouths:
-    - normal_mouth_1.png
-    - normal_mouth_2.png
-    - normal_mouth_3.png
-    - normal_mouth_4.png
   _cheerful:
     base: base.png
     eyes:
@@ -60,6 +50,16 @@ sprite_order:
     - cheerful_mouth_open1.png
     - cheerful_mouth_open2.png
     - cheerful_mouth_open3.png
+  _normal:
+    base: sprite-base.png
+    eyes:
+    - normal_eyes_full.png
+    - normal_eyes_half.png
+    mouths:
+    - normal_mouth_1.png
+    - normal_mouth_2.png
+    - normal_mouth_3.png
+    - normal_mouth_4.png
   _serious:
     base: base.png
     eyes:

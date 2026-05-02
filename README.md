@@ -17,11 +17,17 @@ iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scri
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform: Windows | macOS | Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-lightgrey)]()
 
+### 🎬 Demo
+
+[![Watch the demo](https://img.youtube.com/vi/rHyaEmDmvOY/maxresdefault.jpg)](https://youtu.be/rHyaEmDmvOY)
+
 ---
 
 **Nous Companion** is a small always-on companion window for [Hermes Agent](https://hermes-agent.nousresearch.com). She watches your Hermes sessions, reacts in character with a pixel-animated portrait, speaks with lip-sync, and keeps you company while you work.
 
-> _Nous Companion is an independent community project. "Nous" is used with permission from Nous Research._
+> _Nous Companion is an independent community project. "Nous" is used with informal permission from Nous Research. This is not an official Nous Research product._
+
+![Nous Companion avatar](docs/screenshots/nous_avatar.png)
 
 She runs entirely locally — no cloud dependency for the core loop. TTS and LLM calls go through whatever providers you already have configured in Hermes.
 
@@ -39,6 +45,10 @@ She runs entirely locally — no cloud dependency for the core loop. TTS and LLM
 - **🖼️ Classic Mode** — green-codec bars, retro frequency display.
 - **🔌 Multi-Character System** — switch between character profiles, each with their own expressions, voice references, and personality.
 - **📦 Character Export/Import** — shareable `.nous-companion-character.zip` bundles. Legacy `.codec-character.zip` imports still supported.
+
+![Settings: Quick tab](docs/screenshots/settings_01.png)
+![Settings: Character tab](docs/screenshots/settings_02.png)
+![Settings: Display tab](docs/screenshots/settings_03.png)
 
 ---
 
@@ -93,6 +103,8 @@ curl -fsSL https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scr
 # Windows (PowerShell)
 iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 ```
+
+⚠️ **Uninstalling:** Delete `~/.nous-companion/` (macOS/Linux) or `%LOCALAPPDATA%\Nous-Companion\` (Windows). If you used the NSIS installer on Windows, uninstall via **Add or Remove Programs**. The companion's preferences live in `~/.hermes/nous-companion-prefs.json` — remove that too for a clean sweep.
 
 On **Windows with Hermes in WSL**, the companion auto-detects WSL and runs the
 backend inside it — it just works out of the box.
@@ -171,6 +183,8 @@ Dark teal (`#041c1c`) backgrounds. Cream text (`#ffe6cb`). Collapse Bold for the
 
 Characters live in `characters/<name>/`:
 
+> **Note:** The `nous` character ships with the release — an original rendition of the Nous mascot used with permission from Nous Research.
+
 ```text
 characters/nous/
 ├── config.yaml            # sprite ordering, voice settings, idle rarity
@@ -220,7 +234,7 @@ The skill covers:
 | Backend | Python 3.11+, asyncio |
 | Animation | Pillow, NumPy |
 | Audio | SoundFile, WebAudio API |
-| Comms | WebSockets, AioHTTP |
+| Comms | WebSockets |
 | LLM routing | Direct provider API calls via Hermes config |
 | TTS | OmniVoice, Edge-TTS, or your Hermes TTS setup |
 
@@ -241,6 +255,19 @@ python scripts/debug_composite.py
 # Preview animation
 python scripts/preview_animation.py
 ```
+
+### Debug Log
+
+The companion writes a debug log to a platform-specific path:
+
+| Platform | Path |
+|----------|------|
+| **Windows** | `%APPDATA%\nous-companion\nous-companion-debug.log` |
+| **macOS** | `~/Library/Application Support/nous-companion/nous-companion-debug.log` |
+| **Linux** | `~/.local/share/nous-companion/nous-companion-debug.log` |
+| **Fallback** | `/tmp/nous-companion-debug.log` |
+
+The log captures server events, WebSocket activity, and errors. API keys and conversation content are automatically redacted.
 
 ---
 

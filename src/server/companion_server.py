@@ -28,6 +28,8 @@ import numpy as np
 import soundfile as sf
 import websockets
 
+from utils.log_config import setup_logging, _debug_log_shim, get_log_text
+
 from compositor.cutout_compositor import CutoutCompositor
 from compositor.animation_controller import AnimationController
 from hermes_runtime import (
@@ -74,7 +76,7 @@ class CompanionServer:
 
         # Debug log file — captures [CMD], [ANIMATION], [BROADCAST] output
         # that is invisible when the backend runs inside the Tauri app.
-        self._init_debug_log()
+        self._debug_log_path = setup_logging()
 
         # Character manager — supports multiple characters
         from brain.character_manager import CharacterManager
@@ -383,56 +385,9 @@ class CompanionServer:
         self._ov_client = None
         self._ov_ref_cache = {}
 
-    def _init_debug_log(self) -> None:
-        """Set up the debug log path using OS conventions on all platforms.
-
-        Priority:
-        1. temp directory (always writable, cross-platform)
-        2. NOUS_COMPANION_DATA_DIR env var (set by Tauri app → app data dir)
-        3. Windows: %APPDATA%/nous-companion
-        4. macOS: ~/Library/Application Support/nous-companion
-        5. Linux: ~/.local/share/nous-companion
-        """
-        import tempfile
-        candidates = [Path(tempfile.gettempdir())]
-        data_dir = os.environ.get("NOUS_COMPANION_DATA_DIR")
-        if data_dir:
-            candidates.append(Path(data_dir))
-        else:
-            home = Path.home()
-            if sys.platform == "win32":
-                appdata = os.environ.get("APPDATA")
-                if appdata:
-                    candidates.append(Path(appdata) / "nous-companion")
-            elif sys.platform == "darwin":
-                candidates.append(home / "Library" / "Application Support" / "nous-companion")
-            else:
-                xdg = os.environ.get("XDG_DATA_HOME")
-                if xdg:
-                    candidates.append(Path(xdg) / "nous-companion")
-                else:
-                    candidates.append(home / ".local" / "share" / "nous-companion")
-        self._debug_log_path = None
-        for base in candidates:
-            path = base / "nous-companion-debug.log"
-            try:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with open(path, "a", encoding="utf-8") as _f:
-                    _f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [INIT] debug log started\n")
-                self._debug_log_path = path
-                print(f"[DEBUG-LOG] Writing to {path}", flush=True)
-                break
-            except Exception as exc:
-                print(f"[DEBUG-LOG] Cannot write to {path}: {exc}", flush=True)
-
     def _debug_log(self, message: str) -> None:
         """Write a message to both stdout and the debug log file."""
-        print(message, flush=True)
-        try:
-            with open(self._debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
-        except Exception:
-            pass
+        _debug_log_shim(message, category="cmd")
 
     def _runtime_payload(self) -> dict:
         """Return runtime/bootstrap state for the settings UI."""
@@ -727,7 +682,7 @@ class CompanionServer:
         if not self._clients_for_roles({"control"}):
             return
         t_sessions = time.perf_counter()
-        sessions = self.observer.list_sessions(live_only=True)
+        sessions = await self.observer.list_sessions(live_only=True)
         sessions_ms = (time.perf_counter() - t_sessions) * 1000
         if sessions_ms > 100:
             print(
@@ -2004,7 +1959,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     self._debug_log(f"[CMD] Failed to push runtime_config to {client_name}: {exc}")
                 # Also push initial sessions so the dropdown populates
                 try:
-                    sessions = self.observer.list_sessions(live_only=True)
+                    sessions = await self.observer.list_sessions(live_only=True)
                     active = self._active_session_id()
                     await websocket.send(json.dumps({
                         "type": "sessions",
@@ -2394,7 +2349,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
 
         elif cmd == "get_sessions" or cmd == "list_sessions":
             t_sessions = time.perf_counter()
-            sessions = self.observer.list_sessions(live_only=True)
+            sessions = await self.observer.list_sessions(live_only=True)
             sessions_ms = (time.perf_counter() - t_sessions) * 1000
             if sessions_ms > 100:
                 print(
@@ -2436,6 +2391,36 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 "type": "settings",
                 "settings": self.settings,
             }))
+
+        elif cmd == "get_debug_log":
+            content = get_log_text()
+            await websocket.send(json.dumps({
+                "type": "debug_log",
+                "content": content,
+            }))
+
+        elif cmd == "open_log_folder":
+            import subprocess
+            import platform
+            import os as _os
+            from utils.log_config import _configured_log_path as _log_path
+            if _log_path:
+                log_dir = str(_log_path.parent)
+                try:
+                    system = platform.system()
+                    # On WSL, convert Linux path to Windows UNC and use explorer.exe
+                    wsl_distro = _os.environ.get("WSL_DISTRO_NAME", "")
+                    if wsl_distro:
+                        unc = "\\\\wsl.localhost\\" + wsl_distro + log_dir.replace("/", "\\")
+                        subprocess.run(["explorer.exe", unc], check=False)
+                    elif system == "Windows":
+                        subprocess.run(["explorer", log_dir], check=False)
+                    elif system == "Darwin":
+                        subprocess.run(["open", log_dir], check=False)
+                    else:
+                        subprocess.run(["xdg-open", log_dir], check=False)
+                except Exception:
+                    pass
 
         elif cmd == "get_runtime_config":
             runtime = self._runtime_payload()
@@ -2927,7 +2912,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             # Full mode: build rich context and ask the LLM brain
             # Fetch up to 50 messages; budget-based truncation in _format_session_context
             # ensures we never exceed the user's memory setting.
-            session_ctx = self.observer.get_current_context(max_messages=50)
+            session_ctx = await self.observer.get_current_context(max_messages=50)
             tool_chain = context.get("tool_chain", [])
 
             # Deduplication: don't react to the same response twice
@@ -3593,7 +3578,7 @@ Respond with ONLY a JSON object:
         try:
             # Try fast contextual reaction first — include session history
             max_msgs, _ = self._get_context_depth()
-            session_ctx = self.observer.get_current_context(max_messages=max_msgs)
+            session_ctx = await self.observer.get_current_context(max_messages=max_msgs)
             ctx_text = self._format_session_context(session_ctx, "", [])
             if ctx_text:
                 context = f"Recent conversation:\n{ctx_text}\n\nThe user just sent a new message ({query[:200]}). React naturally."
@@ -4433,7 +4418,6 @@ if __name__ == "__main__":
     parser.add_argument("--fps", type=int, default=30, help="Animation FPS")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     server = CompanionServer(
         character_dir=args.character_dir,
         host=args.host,
