@@ -684,6 +684,7 @@ class HermesObserver:
                             "session_id": data.get("session_id", current.stem),
                             "message_count": self._last_count(),
                             "model": data.get("model", ""),
+                            "profile_name": HermesObserver._infer_profile_from_path(current),
                         })
                     except Exception:
                         pass
@@ -707,6 +708,7 @@ class HermesObserver:
                     "session_id": sid,
                     "message_count": current_record.get("message_count", 0),
                     "model": current_record.get("model", ""),
+                    "profile_name": current_record.get("profile_name", "default"),
                 })
             self._trace_poll(
                 f"[POLL] Current session {self._current_session_file.name} has ENDED. Forcing switch on next poll."
@@ -769,6 +771,7 @@ class HermesObserver:
                             "session": self._current_session_file.stem,
                             "session_id": data.get("session_id", ""),
                             "message_count": message_count,
+                            "profile_name": HermesObserver._infer_profile_from_path(self._current_session_file),
                         })
 
                     elif role == "assistant":
@@ -827,6 +830,7 @@ class HermesObserver:
                                 "significance": sig,
                                 "approval_pending": approval_pending,
                                 "clarify_questions": clarify_questions,
+                                "profile_name": HermesObserver._infer_profile_from_path(self._current_session_file),
                             })
                         else:
                             # Check if this "final response" is actually asking the user for something
@@ -850,6 +854,7 @@ class HermesObserver:
                                     "significance": 10,
                                     "approval_pending": True,
                                     "clarify_questions": [content[:300]],
+                                    "profile_name": HermesObserver._infer_profile_from_path(self._current_session_file),
                                 })
                             else:
                                 # Final text response
@@ -861,6 +866,7 @@ class HermesObserver:
                                     "session": self._current_session_file.stem,
                                     "session_id": data.get("session_id", ""),
                                     "message_count": message_count,
+                                    "profile_name": HermesObserver._infer_profile_from_path(self._current_session_file),
                                 })
 
                     elif role == "tool":
@@ -885,6 +891,7 @@ class HermesObserver:
                             "message_count": message_count,
                             "significance": sig,
                             "approval_pending": is_approval,
+                            "profile_name": HermesObserver._infer_profile_from_path(self._current_session_file),
                         })
 
                 self._set_last_count(message_count)
