@@ -351,6 +351,9 @@ class CompanionServer:
     def _apply_runtime_paths(self, hermes_home: Optional[str | Path] = None) -> None:
         """Refresh Hermes-derived paths, credentials, and prefs locations."""
         self.hermes_home = resolve_hermes_home(hermes_home)
+        # NEW: re-detect active profile when Hermes home changes
+        if hasattr(self, '_active_profile'):
+            self._refresh_active_profile()
         self._hermes_config_path = hermes_path("config.yaml", hermes_home=self.hermes_home)
         self._hermes_auth_path = hermes_path("auth.json", hermes_home=self.hermes_home)
         self._hermes_prefill_path = hermes_path("prefill.json", hermes_home=self.hermes_home)
