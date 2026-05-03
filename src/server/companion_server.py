@@ -92,7 +92,10 @@ class CompanionServer:
         characters_root = char_dir_path
         while characters_root.name != "characters" and characters_root.parent != characters_root:
             characters_root = characters_root.parent
-        self.char_manager = CharacterManager(str(characters_root))
+        self.char_manager = CharacterManager(
+            str(characters_root),
+            hermes_home=self.hermes_home,
+        )
         initial_character_id = self._infer_initial_character_id(char_dir_path, characters_root)
         if initial_character_id:
             self.char_manager.switch(initial_character_id)

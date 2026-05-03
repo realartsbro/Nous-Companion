@@ -219,8 +219,9 @@ class Character:
 class CharacterManager:
     """Manages multiple characters with switching and auto-mode."""
 
-    def __init__(self, characters_dir: str | Path):
+    def __init__(self, characters_dir: str | Path, hermes_home: Optional[str | Path] = None):
         self.characters_dir = Path(characters_dir)
+        self._hermes_home = Path(hermes_home) if hermes_home else None
         self.characters: dict[str, Character] = {}
         self.active_id: str = "default"
         self.auto_mode: bool = False
