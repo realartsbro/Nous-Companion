@@ -320,6 +320,7 @@ class CharacterManager:
                     item["portrait_b64"] = f"data:image/{ext};base64," + base64.b64encode(portrait_bytes).decode()
                 except Exception:
                     pass
+            item["hermes_profile"] = c.hermes_profile  # None for global
             result.append(item)
         return result
 
