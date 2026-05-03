@@ -3549,6 +3549,7 @@
         }
         void settingsLog("ws onopen");
         socket.send(JSON.stringify({ cmd: "register_client", role: "control", client_name: "settings-control" }));
+        socket.send(JSON.stringify({ cmd: "list_profiles" }));
         socket.send(JSON.stringify({ cmd: "get_characters" }));
         socket.send(JSON.stringify({ cmd: "get_expressions" }));
         socket.send(JSON.stringify({ cmd: "get_tts_engines" }));
@@ -3640,9 +3641,28 @@
         case "profile_changed":
           console.log("[settings] Profile changed:", data.profile, "Character:", data.active_character);
           socket.send(JSON.stringify({ cmd: "get_characters" }));
+          socket.send(JSON.stringify({ cmd: "list_profiles" }));
           break;
         case "characters":
           if (data.characters) populateCharacters(data.characters, data.active);
+          if (document.getElementById("page-profiles")?.classList.contains("active")) {
+              renderProfileMatrix(
+                  data.characters,
+                  window._availableProfiles || [],
+                  window._activeProfile
+              );
+          }
+          break;
+        case "profiles":
+          window._availableProfiles = data.profiles || [];
+          window._activeProfile = data.active_profile;
+          if (document.getElementById("page-profiles")?.classList.contains("active")) {
+              renderProfileMatrix(
+                  window._allCharacters || [],
+                  window._availableProfiles,
+                  window._activeProfile
+              );
+          }
           break;
         case "expressions":
           if (data.expressions) populateExpressions(data.expressions);
@@ -3759,6 +3779,10 @@
         case "character_saved":
           if (window._editorSaveCallback) {
             window._editorSaveCallback(data.ok, data.id);
+          }
+          // Matrix optimistic update revert on save failure
+          if (data && data.ok === false) {
+              socket.send(JSON.stringify({ cmd: "get_characters" }));
           }
           break;
         case "character_data":
@@ -5547,6 +5571,110 @@ function buildRing() {
       });
     })();
 
+    function renderProfileMatrix(characters, profiles, activeProfile) {
+        const container = document.getElementById("profile-matrix-container");
+        if (!container) return;
+
+        if (!characters || !characters.length || !profiles || !profiles.length) {
+            container.innerHTML = '<div class="empty-state">No characters or profiles configured.</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+
+        const table = document.createElement("table");
+        table.className = "profile-matrix";
+
+        // --- THEAD ---
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+
+        const cornerTh = document.createElement("th");
+        cornerTh.textContent = "Character";
+        headerRow.appendChild(cornerTh);
+
+        for (const p of profiles) {
+            const th = document.createElement("th");
+            if (p.is_global) th.classList.add("global-col");
+            else if (p.is_active) th.classList.add("active-col");
+            else th.classList.add("inactive-col");
+            th.textContent = p.is_global ? "\uD83C\uDF10 Global" : p.name;
+            headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // --- TBODY ---
+        const tbody = document.createElement("tbody");
+
+        for (const c of characters) {
+            const row = document.createElement("tr");
+
+            const nameCell = document.createElement("td");
+            nameCell.className = "char-name";
+            nameCell.textContent = c.name;
+            row.appendChild(nameCell);
+
+            for (const p of profiles) {
+                const cell = document.createElement("td");
+                if (p.is_global) cell.classList.add("global-col");
+                else if (!p.is_active) cell.classList.add("inactive-col");
+
+                const radio = document.createElement("input");
+                radio.type = "radio";
+                radio.name = `profile_${c.id}`;
+                radio.value = p.name;
+
+                // bound_profile from get_characters response, or fall back to
+                // hermes_profile from character_list broadcasts. Both null/None or
+                // empty string mean "not assigned to any profile" (Global).
+                const profileKey = c.bound_profile !== undefined && c.bound_profile !== null
+                    ? c.bound_profile
+                    : (c.hermes_profile || null);
+                const isAssigned = (p.is_global && !profileKey)
+                    || (!p.is_global && profileKey === p.name);
+                // Note: After save_character, the backend calls _broadcast_character_catalog()
+                // which sends raw character_list (hermes_profile only, NOT bound_profile).
+                // The fallback above handles this, but any new features depending on
+                // visible/mismatch_profile will NOT work in catalog responses.
+                radio.checked = isAssigned;
+
+                if (isAssigned && !p.is_global && !p.is_active) {
+                    radio.classList.add("cross-profile");
+                }
+                if (p.is_global) {
+                    radio.classList.add("global-radio");
+                }
+
+                radio.addEventListener("change", () => {
+                    if (!radio.checked) return;
+
+                    const newProfile = p.is_global ? null : p.name;
+                    const charId = c.id;
+
+                    // Update local cache optimistically
+                    const charData = window._allCharacters?.find(x => x.id === charId);
+                    if (charData) charData.bound_profile = newProfile;
+
+                    // Use the existing send() helper which handles Tauri bridge + callbacks
+                    send("save_character", {
+                        id: charId,
+                        data: { hermes_profile: newProfile }
+                    });
+
+                    // Note: On save failure, the character_saved handler re-fetches
+                    // characters, which corrects the radio on re-render.
+                });
+
+                cell.appendChild(radio);
+                row.appendChild(cell);
+            }
+            tbody.appendChild(row);
+        }
+        table.appendChild(tbody);
+        container.appendChild(table);
+    }
+
     function send(cmd, data) {
       if (useTauriBridge) {
         const emit = window.__TAURI__?.event?.emit;
@@ -5791,6 +5919,13 @@ function buildRing() {
         if (pendingModelData) {
           renderModelList(pendingModelData.models, _activeModelId);
         }
+      } else if (pageId === 'profiles') {
+        // Re-render matrix with cached data when switching to PROFILES tab
+        renderProfileMatrix(
+            window._allCharacters || [],
+            window._availableProfiles || [],
+            window._activeProfile
+        );
       }
     }
 
