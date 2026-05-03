@@ -94,6 +94,23 @@ class HermesObserver:
         # shortly after start without blocking the app bootstrap path.
         self._last_session_switch_time = 0.0
 
+    @staticmethod
+    def _infer_profile_from_path(session_path: Path) -> str:
+        """Infer profile name from a session file's path.
+
+        Paths under profiles/<name>/sessions/ → profile name.
+        Paths under sessions/ (default)       → 'default'.
+        """
+        try:
+            parts = session_path.parts
+            if "profiles" in parts:
+                idx = parts.index("profiles")
+                if idx + 1 < len(parts):
+                    return parts[idx + 1]
+        except (ValueError, IndexError):
+            pass
+        return "default"
+
     # ── helpers ──────────────────────────────────────
 
     def _last_count(self) -> int:
@@ -188,7 +205,7 @@ class HermesObserver:
         effective_mtime = data_mtime or stat.st_mtime
         started_at = self._to_timestamp(data.get("started_at")) or data_mtime or stat.st_mtime
         session_id = data.get("session_id", session_file.stem)
-        return {
+        record = {
             "path": session_file,
             "id": session_id,
             "file": session_file.name,
@@ -203,6 +220,8 @@ class HermesObserver:
             "is_curator": data.get("platform") == "curator",
             "source": data.get("platform", "") or "",
         }
+        record["profile_name"] = HermesObserver._infer_profile_from_path(session_file)
+        return record
 
     def _get_session_inventory(self) -> list[dict]:
         """Return cached metadata for all Hermes session files.
@@ -317,6 +336,7 @@ class HermesObserver:
 
             # Find the session file — check default dir, then profile dirs
             session_file = self.sessions_dir / f"session_{sid}.json"
+            profile_name = "default"
             if not session_file.exists() and profiles_dir.exists():
                 found = False
                 try:
@@ -326,6 +346,7 @@ class HermesObserver:
                         candidate = pdir / "sessions" / f"session_{sid}.json"
                         if candidate.exists():
                             session_file = candidate
+                            profile_name = pdir.name
                             found = True
                             break
                 except OSError:
@@ -346,6 +367,7 @@ class HermesObserver:
                 "is_companion": False,
                 "is_ended": ended is not None,
                 "is_curator": False,
+                "profile_name": profile_name,
             })
         return records
 
