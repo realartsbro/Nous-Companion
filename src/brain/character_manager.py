@@ -275,6 +275,36 @@ class CharacterManager:
         self.active_id = self._preferred_active_id(previous_active)
         print(f"[_load_all] Loaded: {loaded_ids}", flush=True)
 
+        # NEW: validate profile bindings
+        if getattr(self, '_hermes_home', None):
+            self._validate_profile_bindings(self._hermes_home)
+
+    def _validate_profile_bindings(self, hermes_home: Optional[Path] = None):
+        """Check that declared hermes_profile values reference existing profiles.
+        Orphaned characters (pointing to deleted/renamed profiles) are
+        automatically converted to global and logged.
+        """
+        if hermes_home is None:
+            return
+
+        profiles_dir = hermes_home / "profiles"
+        existing_profiles: set[str] = set()
+        if profiles_dir.exists():
+            existing_profiles = {
+                d.name for d in profiles_dir.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            }
+        existing_profiles.add("default")
+
+        for char in self.characters.values():
+            if char.hermes_profile and char.hermes_profile not in existing_profiles:
+                logger.warning(
+                    f"Character '{char.id}' references unknown profile "
+                    f"'{char.hermes_profile}' — treating as global. "
+                    f"Available profiles: {sorted(existing_profiles)}"
+                )
+                char.hermes_profile = None  # auto-convert orphan to global
+
     def get_visible_characters(self, active_profile: Optional[str] = None) -> dict[str, "Character"]:
         """Return characters visible for the given profile.
 
