@@ -74,6 +74,11 @@ class CompanionServer:
         self.ws_port = ws_port
         self._apply_runtime_paths(hermes_home)
 
+        # NEW — Profile awareness (Phase 0.1)
+        self._active_profile: Optional[str] = None
+        self._active_profile = self._detect_active_profile()
+        logger.info(f"Active profile detected: {self._active_profile!r}")
+
         # Debug log file — captures [CMD], [ANIMATION], [BROADCAST] output
         # that is invisible when the backend runs inside the Tauri app.
         self._debug_log_path = setup_logging()
@@ -357,6 +362,47 @@ class CompanionServer:
         if hasattr(self, "_llm_config"):
             self._llm_config["base_url"] = self._hermes_api_url
             self._llm_config["api_key"] = self._hermes_api_key
+
+    def _detect_active_profile(self) -> str:
+        """Detect the currently active Hermes profile name.
+
+        Strategy (best-effort, in priority order):
+        1. If observer has a current session, infer profile from its file path
+        2. Read ~/.hermes/active_profile (sticky default)
+        3. Fall back to 'default'
+        """
+        # Strategy 1: infer from current session path
+        # Note: observer may not be initialized yet on first call — that's fine,
+        # Strategy 2/3 will catch it.
+        if getattr(self, 'observer', None) and self.observer._current_session_file:
+            session_path = self.observer._current_session_file
+            try:
+                parts = session_path.parts
+                if "profiles" in parts:
+                    idx = parts.index("profiles")
+                    if idx + 1 < len(parts):
+                        return parts[idx + 1]
+            except (ValueError, IndexError):
+                pass
+
+        # Strategy 2: active_profile file (sticky default)
+        active_file = self.hermes_home / "active_profile"
+        if active_file.exists():
+            name = active_file.read_text().strip()
+            if name:
+                return name
+
+        # Strategy 3: default profile
+        return "default"
+
+    def _refresh_active_profile(self) -> Optional[str]:
+        """Re-detect active profile, return it if changed."""
+        previous = self._active_profile
+        self._active_profile = self._detect_active_profile()
+        if self._active_profile != previous:
+            logger.info(f"Active profile changed: {previous!r} → {self._active_profile!r}")
+            return self._active_profile
+        return None
 
     def _resolve_omnivoice_url(self) -> str:
         """Resolve the active OmniVoice URL from Hermes-aware auto-detection."""
