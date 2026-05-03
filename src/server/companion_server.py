@@ -2019,10 +2019,36 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     self._debug_log(f"[CMD] Failed to push sessions to {client_name}: {exc}")
 
         elif cmd == "get_characters":
-            fw, fh = self.compositor.frame_size if self.compositor else (52, 89)
+            # Refresh active profile detection
+            self._refresh_active_profile()
+            active_profile = self._active_profile
+
+            # Build character list with profile awareness
+            all_chars = self.char_manager.character_list  # unfiltered
+            visible_ids = {
+                cid for cid, c in self.char_manager.characters.items()
+                if c.hermes_profile is None or c.hermes_profile == active_profile
+            }
+
+            # Enrich each character with visibility info
+            enriched = []
+            for item in all_chars:
+                item = dict(item)  # shallow copy
+                cid = item["id"]
+                char = self.char_manager.characters.get(cid)
+                item["visible"] = cid in visible_ids
+                item["bound_profile"] = char.hermes_profile if char else None
+                if char and char.hermes_profile and char.hermes_profile != active_profile:
+                    item["mismatch_profile"] = char.hermes_profile
+                enriched.append(item)
+
+            fw = self.compositor.frame_size[0] if self.compositor else 0
+            fh = self.compositor.frame_size[1] if self.compositor else 0
+
             await self._broadcast(json.dumps({
                 "type": "characters",
-                "characters": self.char_manager.character_list,
+                "active_profile": active_profile,
+                "characters": enriched,
                 "active": self.char_manager.active_id,
                 "frame_width": fw,
                 "frame_height": fh,
