@@ -2057,6 +2057,23 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
         elif cmd == "switch_character":
             char_id = data.get("character", "")
             request_id = data.get("request_id")
+
+            # Profile guardrail: block switch if character is bound to a different profile
+            self._refresh_active_profile()
+            char = self.char_manager.characters.get(char_id)
+            if char and char.hermes_profile and char.hermes_profile != self._active_profile:
+                await self._broadcast(json.dumps({
+                    "type": "character_switch_rejected",
+                    "character": char_id,
+                    "reason": "profile_mismatch",
+                    "bound_profile": char.hermes_profile,
+                    "active_profile": self._active_profile,
+                    "message": f"'{char.name}' is bound to the '{char.hermes_profile}' profile. "
+                               f"Would you like to switch profiles?",
+                    "request_id": request_id,
+                }))
+                return  # BLOCK the switch
+
             t_switch = time.perf_counter()
             if self.char_manager.switch(char_id):
                 t_after_switch = time.perf_counter()
