@@ -389,6 +389,14 @@ class CharacterManager:
                 config["voice"] = config.get("voice", {})
                 config["voice"].update(voice_updates)
 
+            # Hermes profile
+            if "hermes_profile" in data:
+                val = data["hermes_profile"]
+                if val is None or (isinstance(val, str) and not val.strip()):
+                    config.pop("hermes_profile", None)  # remove field entirely = global
+                else:
+                    config["hermes_profile"] = val
+
             # Animation updates
             anim_updates = {}
             if "mouth_open_threshold" in data:
