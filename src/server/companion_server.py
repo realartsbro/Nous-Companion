@@ -2870,6 +2870,29 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 await self._broadcast(json.dumps({"type": "status", "status": "idle"}))
             return
 
+        # ── Profile-change detection ────────────────────────────────
+        # Re-detect active profile from observer event context
+        event_profile = context.get("profile_name")
+        if event_profile and event_profile != self._active_profile:
+            logger.info(f"Profile change from observer: "
+                        f"{self._active_profile!r} → {event_profile!r}")
+            self._active_profile = event_profile
+
+            # Check if current character is still visible in new profile
+            visible = self.char_manager.get_visible_characters(event_profile)
+            if self.char_manager.active_id not in visible and visible:
+                new_id = "default" if "default" in visible else next(iter(visible))
+                logger.info(f"Auto-switching character for new profile: {new_id}")
+                self.char_manager.switch(new_id)
+                self._sync_runtime_to_active_character(reset_animation=True)
+
+            # Broadcast profile change to UI
+            await self._broadcast(json.dumps({
+                "type": "profile_changed",
+                "profile": event_profile,
+                "active_character": self.char_manager.active_id,
+            }), roles={"control", "renderer"})
+
         if event_type == EVENT_THINKING:
             # User sent a new query — react to the prompt
             # Prompt reactions bypass _is_reacting guard because they MUST be instant.
