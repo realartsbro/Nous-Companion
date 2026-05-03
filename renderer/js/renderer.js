@@ -1243,6 +1243,11 @@
         setCursorVisible(false);
         isSpeaking = false;
         break;
+      case "profile_changed":
+        console.log("[renderer] Profile changed:", data.profile, "Character:", data.active_character);
+        // Re-request character list to refresh badges
+        send("get_characters", {});
+        break;
       case "characters":
         if (data.characters) {
           populateCharacters(data.characters, data.active);
