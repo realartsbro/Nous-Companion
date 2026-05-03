@@ -131,6 +131,11 @@ class Character:
         self.voice_settings = voice.get("settings", {})
         self.expression_voices = voice.get("expression_voices", {})  # { "serious": { "reference_audio": "..." } }
 
+        # NEW — Profile binding
+        self.hermes_profile: Optional[str] = self.config.get("hermes_profile")
+        if isinstance(self.hermes_profile, str) and not self.hermes_profile.strip():
+            self.hermes_profile = None
+
         # Portrait image
         portrait = self.config.get("portrait", "")
         self.portrait_path = str(char_dir / portrait) if portrait else None
