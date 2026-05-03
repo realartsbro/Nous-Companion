@@ -3643,8 +3643,8 @@
       switch (type) {
         case "profile_changed":
           console.log("[settings] Profile changed:", data.profile, "Character:", data.active_character);
-          socket.send(JSON.stringify({ cmd: "get_characters" }));
-          socket.send(JSON.stringify({ cmd: "list_profiles" }));
+          send("get_characters", {});
+          send("list_profiles", {});
           break;
         case "characters":
           if (data.characters) populateCharacters(data.characters, data.active);
@@ -3785,7 +3785,7 @@
           }
           // Matrix optimistic update revert on save failure
           if (data && data.ok === false) {
-              socket.send(JSON.stringify({ cmd: "get_characters" }));
+              send("get_characters", {});
           }
           break;
         case "character_data":

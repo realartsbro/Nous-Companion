@@ -44,6 +44,7 @@
     "hermes_event",
     "model_changed",
     "models",
+    "profiles",
     "runtime_config",
     "sessions",
     "settings",
@@ -61,6 +62,8 @@
     "character_exported",
     "character_imported",
     "character_saved",
+    "profile_changed",
+    "profile_switch_result",
     "text",
   ]);
 
@@ -152,6 +155,7 @@
         "get_runtime_config",
         "list_sessions",
         "get_godmode",
+        "list_profiles",
       ]) {
         forwardSettingsBridgeCommand(cmd, {});
       }
