@@ -274,6 +274,22 @@ class CharacterManager:
         self.active_id = self._preferred_active_id(previous_active)
         print(f"[_load_all] Loaded: {loaded_ids}", flush=True)
 
+    def get_visible_characters(self, active_profile: Optional[str] = None) -> dict[str, "Character"]:
+        """Return characters visible for the given profile.
+
+        A character is visible if:
+          - its hermes_profile is None (global character), OR
+          - its hermes_profile matches the active_profile
+
+        If active_profile is None, all characters are visible (no filtering).
+        """
+        if active_profile is None:
+            return dict(self.characters)
+        return {
+            cid: char for cid, char in self.characters.items()
+            if char.hermes_profile is None or char.hermes_profile == active_profile
+        }
+
     @property
     def active(self) -> Optional[Character]:
         return self.characters.get(self.active_id)
