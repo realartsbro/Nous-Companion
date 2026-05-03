@@ -3342,6 +3342,8 @@
       });
       void settingsLog("using tauri settings bridge");
       await tauriEvent.emit("settings-bridge-bootstrap", {});
+      // Also send list_profiles — bridge bootstrap may not include profile data
+      send("list_profiles", {});
       return true;
     }
 
