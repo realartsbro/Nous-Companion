@@ -2818,6 +2818,37 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     "error": str(e),
                 }))
 
+        elif cmd == "list_profiles":
+            # Refresh active profile before reading it
+            self._refresh_active_profile()
+
+            profiles: list[dict] = []
+            # Always include "global" as the universal option
+            profiles.append({
+                "name": "global",
+                "is_active": self._active_profile in (None, "", "default"),
+                "is_global": True,
+            })
+
+            # Scan ~/.hermes/profiles/ for real profile directories
+            profiles_dir = self.hermes_home / "profiles"
+            if profiles_dir.exists():
+                for d in sorted(profiles_dir.iterdir()):
+                    if d.is_dir() and not d.name.startswith("."):
+                        profiles.append({
+                            "name": d.name,
+                            "is_active": d.name == self._active_profile,
+                            "is_global": False,
+                        })
+            # Filter out directories named "global" to avoid duplicate columns
+            profiles = [p for p in profiles if not (not p.get("is_global") and p["name"] == "global")]
+
+            await self._broadcast(json.dumps({
+                "type": "profiles",
+                "profiles": profiles,
+                "active_profile": self._active_profile,
+            }))
+
     async def _on_hermes_event(self, event_type: str, context: dict):
         """Handle events from the Hermes session observer.
 
