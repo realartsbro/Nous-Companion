@@ -5576,6 +5576,12 @@ function buildRing() {
         const container = document.getElementById("profile-matrix-container");
         if (!container) return;
 
+        console.log("[matrix] render:", {
+            chars: characters?.length,
+            profs: profiles?.length,
+            activeProfile
+        });
+
         if (!characters || !characters.length || !profiles || !profiles.length) {
             container.innerHTML = '<div class="empty-state">No characters or profiles configured.</div>';
             return;
