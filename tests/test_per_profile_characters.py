@@ -70,5 +70,14 @@ def test_get_visible_characters_filters_by_profile():
         assert "codex" not in visible
 
 
+def test_orphan_profile_is_detected():
+    """Characters referencing non-existent profiles are converted to global."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _make_test_character_dir(root, "ghost", "nonexistent-profile")
+        cm = CharacterManager(str(root), hermes_home=Path("/tmp/fake-hermes"))
+        assert cm.characters["ghost"].hermes_profile is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
