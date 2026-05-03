@@ -2771,6 +2771,50 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 "type": "scene_status", **result
             }))
 
+        elif cmd == "switch_profile":
+            profile_name = data.get("profile", "")
+            if not profile_name:
+                await self._broadcast(json.dumps({
+                    "type": "profile_switch_result",
+                    "success": False,
+                    "error": "No profile specified",
+                }))
+                return
+
+            # Write to ~/.hermes/active_profile (sets sticky default)
+            active_file = self.hermes_home / "active_profile"
+            try:
+                active_file.write_text(profile_name + "\n")
+                self._refresh_active_profile()
+                logger.info(f"Switched active profile to: {profile_name}")
+
+                # After profile switch, auto-switch to a profile-appropriate character
+                visible = self.char_manager.get_visible_characters(profile_name)
+                if visible:
+                    if self.char_manager.active_id in visible:
+                        new_char_id = self.char_manager.active_id
+                    elif "default" in visible:
+                        new_char_id = "default"
+                    else:
+                        new_char_id = next(iter(visible))
+                    self.char_manager.switch(new_char_id)
+                    self._sync_runtime_to_active_character(reset_animation=True)
+                    self._quip_history.clear()
+
+                await self._broadcast(json.dumps({
+                    "type": "profile_switch_result",
+                    "success": True,
+                    "profile": profile_name,
+                    "active_character": self.char_manager.active_id,
+                }))
+            except Exception as e:
+                logger.error(f"Failed to switch profile: {e}")
+                await self._broadcast(json.dumps({
+                    "type": "profile_switch_result",
+                    "success": False,
+                    "error": str(e),
+                }))
+
     async def _on_hermes_event(self, event_type: str, context: dict):
         """Handle events from the Hermes session observer.
 
