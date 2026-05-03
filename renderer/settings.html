@@ -31,6 +31,7 @@
           <button class="nav-btn" data-page="display">DISPLAY</button>
           <button class="nav-btn" data-page="system">SYSTEM</button>
           <button class="nav-btn" data-page="about">ABOUT</button>
+          <button class="nav-btn" data-page="profiles">PROFILES</button>
         </div>
         <div class="sidebar-footer">
           <div class="observer-toggle-row">
@@ -491,6 +492,21 @@
 
           </div>
         </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ PROFILES ════════════════════════════════════════ -->
+  <div id="page-profiles" class="page">
+    <div class="page-grid single-col">
+      <div class="settings-section">
+        <div class="section-label">Profile Assignments</div>
+        <div id="profile-matrix-container" style="overflow-x: auto; max-width: 100%;">
+          <!-- Matrix rendered by JS -->
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; opacity: 0.4;">
+          Click a radio to assign. Active profile column is highlighted.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2869,6 +2885,135 @@
       border-color: var(--error);
       color: var(--bone);
     }
+
+/* Matrix table */
+.profile-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Sticky name column */
+.profile-matrix th:first-child,
+.profile-matrix td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--base, #0A0C0B);
+}
+
+/* Sticky header row */
+.profile-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--base, #0A0C0B);
+  padding: 8px 12px;
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Sticky corner cell (top-left) needs highest z-index */
+.profile-matrix thead th:first-child {
+  z-index: 4;
+}
+
+/* Global column — visually distinct */
+.profile-matrix thead th.global-col {
+  color: rgba(255,255,255,0.4);
+  font-style: italic;
+}
+.profile-matrix tbody td.global-col {
+  opacity: 0.5;
+}
+
+/* Active profile column — highlighted */
+.profile-matrix thead th.active-col {
+  color: #fff;
+  border-bottom: 2px solid var(--accent, #4fc3f7);
+}
+.profile-matrix thead th.active-col::after {
+  content: " ACTIVE";
+  font-size: 8px;
+  opacity: 0.6;
+  display: block;
+}
+
+/* Inactive profile columns — dimmed */
+.profile-matrix thead th.inactive-col {
+  color: rgba(255,255,255,0.35);
+}
+.profile-matrix tbody td.inactive-col {
+  opacity: 0.45;
+}
+
+/* Data cells */
+.profile-matrix td {
+  padding: 6px 12px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: opacity 0.2s ease;
+}
+
+/* Character name cells */
+.profile-matrix td.char-name {
+  text-align: left;
+  font-weight: 500;
+  padding-right: 16px;
+  white-space: nowrap;
+}
+
+/* Custom radio inputs styled as dots */
+.profile-matrix input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: middle;
+}
+.profile-matrix input[type="radio"]:checked {
+  border-color: var(--accent, #4fc3f7);
+  background: var(--accent, #4fc3f7);
+  box-shadow: 0 0 6px rgba(79, 195, 247, 0.4);
+}
+.profile-matrix input[type="radio"].cross-profile:checked {
+  border-color: #ffa726;
+  background: #ffa726;
+  box-shadow: 0 0 6px rgba(255, 167, 38, 0.3);
+}
+.profile-matrix input[type="radio"].global-radio:checked {
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.2);
+  box-shadow: none;
+}
+.profile-matrix input[type="radio"]:hover {
+  border-color: rgba(255,255,255,0.5);
+}
+.profile-matrix input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent, #4fc3f7);
+  outline-offset: 2px;
+}
+
+/* Row hover */
+.profile-matrix tbody tr:hover td {
+  background: rgba(255,255,255,0.03);
+}
+
+/* Empty state */
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  opacity: 0.4;
+  font-size: 13px;
+}
 
   </style>
 
