@@ -3912,8 +3912,6 @@
                   window._activeProfile
               );
           }
-          if (currentPageId === 'character') renderCharProfiles();
-          if (currentPageId === 'quick') renderBatchAssignRows();
           break;
         case "profiles":
           window._availableProfiles = data.profiles || [];
@@ -3925,8 +3923,6 @@
                   window._activeProfile
               );
           }
-          if (currentPageId === 'character') renderCharProfiles();
-          if (currentPageId === 'quick') renderBatchAssignRows();
           break;
         case "expressions":
           if (data.expressions) populateExpressions(data.expressions);
@@ -6213,7 +6209,7 @@ function renderBatchAssignRows() {
       renderRing();
       setCharacterPanelStatus(statusText, "");
       send("get_character_data", { id: characterId });
-      renderCharProfiles();  // render profile chips for this character
+      updateProfileIndicator();  // update profile indicator
     }
 
     function activateCharacter(characterId) {
@@ -6224,7 +6220,7 @@ function renderBatchAssignRows() {
       renderCharacterCarousel();
       buildRing();
       renderRing();
-      renderCharProfiles();
+      updateProfileIndicator();
       if (currentPageId === "character") {
         setCharacterPanelStatus("Loading…", "");
       }
@@ -6404,7 +6400,7 @@ function renderBatchAssignRows() {
           saveStatus.textContent = "Loading…";
           saveStatus.className = "editor-save-status";
         }
-        renderCharProfiles();  // populate profile chips/dropdown from cached data
+        updateProfileIndicator();  // update profile indicator
       } else if (pageId === 'system') {
         loadSystemData();
         refreshSystemPageData();
@@ -6418,9 +6414,6 @@ function renderBatchAssignRows() {
             window._availableProfiles || [],
             window._activeProfile
         );
-      } else if (pageId === 'quick') {
-        // Render batch assignment rows
-        renderBatchAssignRows();
       }
     }
 
