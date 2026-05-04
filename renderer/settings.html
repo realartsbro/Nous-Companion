@@ -512,11 +512,20 @@
   <!-- ════════════════════════════════════════ PROFILES ════════════════════════════════════════ -->
   <div id="page-profiles" class="page">
     <div class="page-grid single-col">
-      <div class="settings-section">
-        <div class="section-label">Profile Assignments</div>
-        <div id="profile-matrix-container" style="overflow-x: auto; max-width: 100%; border: 1px solid var(--divider);">
-          <!-- Matrix rendered by JS -->
+
+      <!-- Filter bar -->
+      <div class="settings-section compact">
+        <div class="profile-filter-bar" id="profile-filter-bar">
+          <button class="filter-pill active" data-filter="all">All</button>
+          <!-- Dynamic filter pills inserted by JS -->
         </div>
+      </div>
+
+      <!-- Character groups by profile -->
+      <div id="profile-groups-container">
+        <!-- Rendered by JS: collapsible sections per profile -->
+      </div>
+
     </div>
   </div>
 </div>
