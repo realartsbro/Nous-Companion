@@ -4097,6 +4097,16 @@
             Modal.alert("Failed to delete character: " + (data.error || "unknown error"), "DELETE CHARACTER");
           }
           break;
+        case "character_switch_rejected":
+          console.warn("[settings] Character switch rejected:", data.reason, data.message);
+          if (data.reason === "profile_mismatch") {
+            const profileNames = Array.isArray(data.bound_profile)
+              ? data.bound_profile.join(", ")
+              : data.bound_profile;
+            const msg = data.message || `Character is bound to profile(s): ${profileNames}`;
+            Modal.alert(msg, "SWITCH BLOCKED");
+          }
+          break;
       }
     }
 
