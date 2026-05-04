@@ -5942,12 +5942,17 @@ function buildProfileGroup(profileName, characters, isGlobal) {
         const row = document.createElement("div");
         row.className = "char-row";
 
-        // Portrait
+        // Portrait — check both portrait_b64 and sprite_preview_b64 (matching carousel fallback chain at line 5299-5303)
         const portrait = document.createElement("div");
         portrait.className = "char-row-portrait";
         if (c.portrait_b64) {
             const img = document.createElement("img");
             img.src = c.portrait_b64;
+            img.alt = c.name;
+            portrait.appendChild(img);
+        } else if (c.sprite_preview_b64) {
+            const img = document.createElement("img");
+            img.src = c.sprite_preview_b64;
             img.alt = c.name;
             portrait.appendChild(img);
         } else {
