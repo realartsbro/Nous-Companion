@@ -142,6 +142,14 @@
               </div>
             </div>
 
+            <!-- Profile indicator (read-only) -->
+            <div class="settings-section" id="char-profile-indicator-section" style="border-top: 1px solid var(--divider); padding-top: 8px; margin-top: 4px;">
+              <div class="section-label" style="font-size: 9px; letter-spacing: 0.08em;">
+                In profiles: <span id="char-profile-indicator">none</span>
+                <span style="float: right; cursor: pointer; color: var(--secondary);" onclick="showPage('profiles')">Manage →</span>
+              </div>
+            </div>
+
             <!-- Identity -->
             <div class="settings-section">
               <div class="section-label">Identity</div>
@@ -5291,6 +5299,7 @@
       if (needsRebuild || activeId !== _lastRenderedId) {
         renderRing();
       }
+      updateProfileIndicator();
     }
 
 function renderCharacterCarousel() {
@@ -5997,6 +6006,20 @@ function buildProfileGroup(profileName, characters, isGlobal) {
     group.appendChild(header);
     group.appendChild(body);
     return group;
+}
+
+// ── Read-only profile indicator for CHARACTER tab ─────────────────────────────────────
+
+function updateProfileIndicator() {
+    const charId = window._activeCharacterId;
+    if (!charId) return;
+    const charData = window._allCharacters?.find(c => c.id === charId);
+    if (!charData) return;
+    const el = document.getElementById("char-profile-indicator");
+    if (el) {
+        const profiles = charData.hermes_profiles || [];
+        el.textContent = profiles.length > 0 ? profiles.join(", ") : "Global (no profile)";
+    }
 }
 
 // ── Character Profile Management ─────────────────────────────────────
