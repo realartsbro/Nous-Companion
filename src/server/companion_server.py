@@ -2030,7 +2030,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             all_chars = self.char_manager.character_list  # unfiltered
             visible_ids = {
                 cid for cid, c in self.char_manager.characters.items()
-                if c.hermes_profile is None or c.hermes_profile == active_profile
+                if not c.hermes_profiles or active_profile in c.hermes_profiles
             }
 
             # Enrich each character with visibility info
@@ -2040,9 +2040,10 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 cid = item["id"]
                 char = self.char_manager.characters.get(cid)
                 item["visible"] = cid in visible_ids
-                item["bound_profile"] = char.hermes_profile if char else None
-                if char and char.hermes_profile and char.hermes_profile != active_profile:
-                    item["mismatch_profile"] = char.hermes_profile
+                item["hermes_profiles"] = char.hermes_profiles if char else []
+                item["bound_profile"] = char.hermes_profile if char else None  # keep for backward compat
+                if char and char.hermes_profiles and self._active_profile not in char.hermes_profiles:
+                    item["mismatch_profile"] = char.hermes_profiles
                 enriched.append(item)
 
             fw = self.compositor.frame_size[0] if self.compositor else 0
@@ -2064,15 +2065,15 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             # Profile guardrail: block switch if character is bound to a different profile
             self._refresh_active_profile()
             char = self.char_manager.characters.get(char_id)
-            if char and char.hermes_profile and char.hermes_profile != self._active_profile:
+            if char and char.hermes_profiles and self._active_profile not in char.hermes_profiles:
                 await self._broadcast(json.dumps({
                     "type": "character_switch_rejected",
                     "character": char_id,
                     "reason": "profile_mismatch",
-                    "bound_profile": char.hermes_profile,
+                    "bound_profile": char.hermes_profiles,
                     "active_profile": self._active_profile,
-                    "message": f"'{char.name}' is bound to the '{char.hermes_profile}' profile. "
-                               f"Would you like to switch profiles?",
+                    "message": f"'{char.name}' is bound to: {', '.join(char.hermes_profiles)}. "
+                               f"Would you like to switch?",
                     "request_id": request_id,
                 }))
                 return  # BLOCK the switch
