@@ -1245,7 +1245,28 @@
   cursor: pointer;
 }
 .roster-panel-item input[type="checkbox"] {
-  accent-color: var(--secondary);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--divider);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.12s;
+}
+.roster-panel-item input[type="checkbox"]:checked {
+  background: var(--secondary-container);
+  border-color: var(--secondary);
+}
+.roster-panel-item input[type="checkbox"]:checked::after {
+  content: "✓";
+  font-size: 11px;
+  color: var(--secondary);
+  line-height: 1;
 }
 .roster-panel-divider {
   height: 1px;
