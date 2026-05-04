@@ -6445,6 +6445,7 @@ function renderBatchAssignRows() {
           saveStatus.textContent = "Loading…";
           saveStatus.className = "editor-save-status";
         }
+        renderCharProfiles();  // populate profile chips/dropdown from cached data
       } else if (pageId === 'system') {
         loadSystemData();
         refreshSystemPageData();
