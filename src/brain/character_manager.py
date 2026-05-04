@@ -132,9 +132,18 @@ class Character:
         self.expression_voices = voice.get("expression_voices", {})  # { "serious": { "reference_audio": "..." } }
 
         # NEW — Profile binding
-        self.hermes_profile: Optional[str] = self.config.get("hermes_profile")
-        if isinstance(self.hermes_profile, str) and not self.hermes_profile.strip():
-            self.hermes_profile = None
+        raw = self.config.get("hermes_profiles", None)
+        if raw is None:
+            # Backward compat: migrate single hermes_profile → array
+            legacy = self.config.get("hermes_profile")
+            if legacy and isinstance(legacy, str) and legacy.strip():
+                self.hermes_profiles = [legacy.strip()]
+            else:
+                self.hermes_profiles = []
+        elif isinstance(raw, list):
+            self.hermes_profiles = [p.strip() for p in raw if isinstance(p, str) and p.strip()]
+        else:
+            self.hermes_profiles = []
 
         # Portrait image
         portrait = self.config.get("portrait", "")
@@ -297,20 +306,17 @@ class CharacterManager:
         existing_profiles.add("default")
 
         for char in self.characters.values():
-            if char.hermes_profile and char.hermes_profile not in existing_profiles:
-                logger.warning(
-                    f"Character '{char.id}' references unknown profile "
-                    f"'{char.hermes_profile}' — treating as global. "
-                    f"Available profiles: {sorted(existing_profiles)}"
-                )
-                char.hermes_profile = None  # auto-convert orphan to global
+            # Iterate over a COPY — mutating while iterating skips elements
+            for profile_name in list(char.hermes_profiles):
+                if profile_name not in existing_profiles:
+                    char.hermes_profiles.remove(profile_name)
 
     def get_visible_characters(self, active_profile: Optional[str] = None) -> dict[str, "Character"]:
         """Return characters visible for the given profile.
 
         A character is visible if:
-          - its hermes_profile is None (global character), OR
-          - its hermes_profile matches the active_profile
+          - its hermes_profiles is empty (global character), OR
+          - active_profile is in its hermes_profiles
 
         If active_profile is None, all characters are visible (no filtering).
         """
@@ -318,7 +324,7 @@ class CharacterManager:
             return dict(self.characters)
         return {
             cid: char for cid, char in self.characters.items()
-            if char.hermes_profile is None or char.hermes_profile == active_profile
+            if not char.hermes_profiles or active_profile in char.hermes_profiles
         }
 
     @property
