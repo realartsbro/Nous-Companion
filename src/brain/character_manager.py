@@ -199,6 +199,11 @@ class Character:
                     f"expressions={self.compositor.expression_names if self.compositor else 'none'}")
 
     @property
+    def hermes_profile(self) -> Optional[str]:
+        """Backward-compat: returns first profile or None."""
+        return self.hermes_profiles[0] if self.hermes_profiles else None
+
+    @property
     def has_sprites(self) -> bool:
         return self.compositor is not None
 
@@ -358,6 +363,7 @@ class CharacterManager:
                 except Exception:
                     pass
             item["hermes_profile"] = c.hermes_profile  # None for global
+            item["hermes_profiles"] = c.hermes_profiles
             result.append(item)
         return result
 
@@ -426,13 +432,21 @@ class CharacterManager:
                 config["voice"] = config.get("voice", {})
                 config["voice"].update(voice_updates)
 
-            # Hermes profile
-            if "hermes_profile" in data:
-                val = data["hermes_profile"]
-                if val is None or (isinstance(val, str) and not val.strip()):
-                    config.pop("hermes_profile", None)  # remove field entirely = global
+            # Hermes profiles (multi)
+            if "hermes_profiles" in data:
+                profiles = data["hermes_profiles"]
+                if not profiles or (isinstance(profiles, list) and len(profiles) == 0):
+                    config.pop("hermes_profiles", None)
+                    config.pop("hermes_profile", None)  # cleanup legacy field
                 else:
-                    config["hermes_profile"] = val
+                    # Deduplicate and filter empty strings
+                    cleaned = list(dict.fromkeys([p.strip() for p in profiles if isinstance(p, str) and p.strip()]))
+                    config["hermes_profiles"] = cleaned
+                    # Keep legacy field for backward compat (first profile)
+                    if cleaned:
+                        config["hermes_profile"] = cleaned[0]
+                    else:
+                        config.pop("hermes_profile", None)
 
             # Animation updates
             anim_updates = {}
