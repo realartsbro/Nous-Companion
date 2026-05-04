@@ -440,9 +440,14 @@ class CharacterManager:
             # Hermes profiles (multi)
             if "hermes_profiles" in data:
                 profiles = data["hermes_profiles"]
-                if not profiles or (isinstance(profiles, list) and len(profiles) == 0):
+                if not isinstance(profiles, list):
+                    # Defensive: non-list input treated as empty/global
                     config.pop("hermes_profiles", None)
-                    config.pop("hermes_profile", None)  # cleanup legacy field
+                    config.pop("hermes_profile", None)
+                    logger.warning(f"save_character: hermes_profiles was not a list, treating as global (got {type(profiles).__name__})")
+                elif len(profiles) == 0:
+                    config.pop("hermes_profiles", None)
+                    config.pop("hermes_profile", None)
                 else:
                     # Deduplicate and filter empty strings
                     cleaned = list(dict.fromkeys([p.strip() for p in profiles if isinstance(p, str) and p.strip()]))
