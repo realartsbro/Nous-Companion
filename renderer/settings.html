@@ -5800,6 +5800,147 @@ function buildRing() {
         container.appendChild(table);
     }
 
+// ── Character Profile Management ─────────────────────────────────────
+
+function renderCharProfiles() {
+    const charId = window._activeCharacterId;
+    if (!charId) return;
+    const charData = window._allCharacters?.find(c => c.id === charId);
+    if (!charData) return;
+
+    const profiles = charData.hermes_profiles || [];
+    const chipsContainer = document.getElementById("char-profile-chips");
+    if (!chipsContainer) return;
+
+    chipsContainer.innerHTML = "";
+    const MAX_VISIBLE = 2;
+
+    if (profiles.length === 0) {
+        // Show "Global" muted chip
+        const chip = document.createElement("span");
+        chip.className = "profile-chip global-chip";
+        chip.textContent = "Global";
+        chip.addEventListener("click", () => openProfilePopover(chip, charId, profiles));
+        chipsContainer.appendChild(chip);
+    } else {
+        const visible = profiles.slice(0, MAX_VISIBLE);
+        const overflow = profiles.slice(MAX_VISIBLE);
+
+        for (const p of visible) {
+            const chip = document.createElement("span");
+            chip.className = "profile-chip";
+            chip.textContent = p;
+            chip.addEventListener("click", () => openProfilePopover(chip, charId, profiles));
+            chipsContainer.appendChild(chip);
+        }
+
+        if (overflow.length > 0) {
+            const chip = document.createElement("span");
+            chip.className = "profile-chip overflow-chip";
+            chip.textContent = `+${overflow.length} more`;
+            chip.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openProfilePopover(chip, charId, profiles);
+            });
+            chipsContainer.appendChild(chip);
+        }
+    }
+
+    // Populate dropdown
+    const dropdownList = document.getElementById("char-profile-dropdown-list");
+    if (!dropdownList) return;
+    dropdownList.innerHTML = "";
+    const allProfiles = window._availableProfiles || [];
+    for (const p of allProfiles) {
+        if (p.is_global) continue; // "Global" is implicit (empty array)
+        const item = document.createElement("div");
+        item.className = "custom-dropdown-item";
+        if (profiles.includes(p.name)) item.classList.add("selected");
+
+        // Member count
+        const memberCount = (window._allCharacters || []).filter(
+            c => (c.hermes_profiles || []).includes(p.name)
+        ).length;
+        item.innerHTML = `${p.name} <span class="member-count">${memberCount}c</span>`;
+
+        item.addEventListener("click", () => {
+            toggleProfileForChar(charId, p.name);
+        });
+        dropdownList.appendChild(item);
+    }
+}
+
+function toggleProfileForChar(charId, profileName) {
+    // Note: local mutation for instant UI. Backend broadcast confirms persistence.
+    // See data flow note below.
+    const charData = window._allCharacters?.find(c => c.id === charId);
+    if (!charData) return;
+
+    let profiles = charData.hermes_profiles || [];
+    if (profiles.includes(profileName)) {
+        profiles = profiles.filter(p => p !== profileName);
+    } else {
+        profiles = [...profiles, profileName];
+    }
+    charData.hermes_profiles = profiles;
+
+    send("save_character", {
+        id: charId,
+        data: { hermes_profiles: profiles }
+    });
+
+    renderCharProfiles();
+}
+
+function openProfilePopover(anchorEl, charId, currentProfiles) {
+    // Remove any existing popover
+    const existing = document.querySelector(".profile-popover");
+    if (existing) existing.remove();
+
+    const popover = document.createElement("div");
+    popover.className = "profile-popover";
+
+    const allProfiles = window._availableProfiles || [];
+    for (const p of allProfiles) {
+        if (p.is_global) continue;
+        const item = document.createElement("label");
+        item.className = "profile-popover-item";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = currentProfiles.includes(p.name);
+        cb.addEventListener("change", () => {
+            toggleProfileForChar(charId, p.name);
+            // Rebuild popover with updated state
+            setTimeout(() => openProfilePopover(anchorEl, charId,
+                window._allCharacters?.find(c => c.id === charId)?.hermes_profiles || []), 50);
+        });
+
+        const span = document.createElement("span");
+        span.textContent = p.name;
+        item.appendChild(cb);
+        item.appendChild(span);
+        popover.appendChild(item);
+    }
+
+    document.body.appendChild(popover);
+
+    // Position below anchor
+    const rect = anchorEl.getBoundingClientRect();
+    popover.style.position = "fixed";
+    popover.style.left = rect.left + "px";
+    popover.style.top = (rect.bottom + 4) + "px";
+
+    // Close on outside click
+    const closeHandler = (e) => {
+        if (!popover.contains(e.target) && e.target !== anchorEl) {
+            popover.remove();
+            document.removeEventListener("click", closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener("click", closeHandler), 0);
+}
+
     function send(cmd, data) {
       if (useTauriBridge) {
         const emit = window.__TAURI__?.event?.emit;
@@ -5849,6 +5990,7 @@ function buildRing() {
       renderRing();
       setCharacterPanelStatus(statusText, "");
       send("get_character_data", { id: characterId });
+      renderCharProfiles();  // render profile chips for this character
     }
 
     function activateCharacter(characterId) {
@@ -6355,6 +6497,19 @@ function buildRing() {
           }
         });
       });
+
+      // ── Profile dropdown toggle ──
+      const profileDropdownHeader = document.getElementById("char-profile-dropdown-header");
+      const profileDropdown = document.getElementById("char-profile-dropdown");
+      if (profileDropdownHeader && profileDropdown) {
+          profileDropdownHeader.addEventListener("click", (e) => {
+              e.stopPropagation();
+              profileDropdown.classList.toggle("open");
+          });
+          document.addEventListener("click", () => {
+              if (profileDropdown) profileDropdown.classList.remove("open");
+          });
+      }
 
       void connect();
       initAudioPlayer();
