@@ -505,14 +505,6 @@
   <div id="page-profiles" class="page">
     <div class="page-grid single-col">
 
-      <!-- Filter bar -->
-      <div class="settings-section compact">
-        <div class="profile-filter-bar" id="profile-filter-bar">
-          <button class="filter-pill active" data-filter="all">All</button>
-          <!-- Dynamic filter pills inserted by JS -->
-        </div>
-      </div>
-
       <!-- Character groups by profile -->
       <div id="profile-groups-container">
         <!-- Rendered by JS: collapsible sections per profile -->
@@ -3161,34 +3153,6 @@
 /* Row hover */
 .profile-matrix tbody tr:hover td {
   background: var(--surface-elevated);
-}
-
-/* ── Profile filter bar ──────────── */
-.profile-filter-bar {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.filter-pill {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 3px 10px;
-  background: var(--surface-container-lowest);
-  border: 1px solid var(--divider);
-  color: var(--outline);
-  cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.04em;
-}
-.filter-pill:hover {
-  border-color: var(--outline-variant);
-  color: var(--bone);
-}
-.filter-pill.active {
-  background: var(--surface-elevated);
-  color: var(--bone);
-  border-color: var(--secondary-container);
 }
 
 /* ── Profile character remove button ──────────── */
@@ -5876,12 +5840,10 @@ function buildRing() {
 
 function renderProfileGroups(characters, profiles, activeProfile) {
     const container = document.getElementById("profile-groups-container");
-    const filterBar = document.getElementById("profile-filter-bar");
-    if (!container || !filterBar) return;
+    if (!container) return;
 
     if (!characters || !characters.length) {
         container.innerHTML = '<div class="empty-state">No characters configured.</div>';
-        filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
         return;
     }
     // No profiles from Hermes? Roster will still render (characters shown without chips).
@@ -5904,34 +5866,7 @@ function renderProfileGroups(characters, profiles, activeProfile) {
         }
     }
 
-    // Render filter bar
-    filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
-    for (const p of profiles) {
-        if (p.is_global) continue;
-        const btn = document.createElement("button");
-        btn.className = "filter-pill";
-        btn.dataset.filter = p.name;
-        btn.textContent = p.name;
-        filterBar.appendChild(btn);
-    }
-
-    // Filter click handlers
-    filterBar.querySelectorAll(".filter-pill").forEach(btn => {
-        btn.addEventListener("click", () => {
-            filterBar.querySelectorAll(".filter-pill").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            const filter = btn.dataset.filter;
-            container.querySelectorAll(".profile-group").forEach(g => {
-                if (filter === "all" || g.dataset.profile === filter) {
-                    g.style.display = "";
-                } else {
-                    g.style.display = "none";
-                }
-            });
-        });
-    });
-
-    // Render groups
+    // Named profile groups (all always visible, no filter pills)
     container.innerHTML = "";
 
     // Roster replaces Global — handled by renderRoster()
