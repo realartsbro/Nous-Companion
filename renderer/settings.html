@@ -1156,6 +1156,51 @@
   background: var(--surface-container-high);
   border-color: var(--outline-variant);
 }
+/* ── Roster chip toggles ──────────── */
+.roster-row {
+  gap: 8px;
+}
+.roster-chips {
+  gap: 3px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.roster-chip {
+  font-size: 9px;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+.roster-chip.assigned {
+  background: var(--surface-elevated);
+  border-color: var(--secondary-container);
+  color: var(--secondary);
+}
+.roster-chip.unassigned {
+  background: transparent;
+  border-color: var(--divider);
+  color: var(--outline-variant);
+  opacity: 0.6;
+}
+.roster-chip.unassigned:hover {
+  opacity: 1;
+  border-color: var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+.roster-global-hint {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-style: italic;
+  color: var(--outline-variant);
+  opacity: 0.6;
+}
+.roster-header {
+  cursor: default;
+}
+.roster-header:hover {
+  background: transparent;
+}
 .profile-chip.global-chip {
   color: var(--outline-variant);
   border-style: dashed;
@@ -3143,74 +3188,6 @@
 }
 .profile-group.collapsed .profile-group-body {
   display: none;
-}
-
-/* ── Profile character remove button ──────────── */
-.char-row-remove {
-  display: none;
-  font-size: 14px;
-  color: var(--outline);
-  cursor: pointer;
-  margin-left: auto;
-  padding: 0 6px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.char-row:hover .char-row-remove {
-  display: inline;
-}
-.char-row-remove:hover {
-  color: var(--error);
-}
-
-/* ── Profile add-list (inline checkbox picker) ──────────── */
-.profile-add-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--divider);
-  margin-bottom: 6px;
-  align-items: center;
-}
-.profile-add-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  padding: 2px 6px;
-}
-.profile-add-item input[type="checkbox"] {
-  accent-color: var(--secondary);
-}
-.profile-add-btn {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--secondary);
-  cursor: pointer;
-  margin-left: auto;
-  padding: 2px 6px;
-  letter-spacing: 0.04em;
-  opacity: 0.7;
-  transition: opacity 0.15s;
-}
-.profile-add-btn:hover {
-  opacity: 1;
-}
-.profile-add-done {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--outline);
-  cursor: pointer;
-  margin-left: auto;
-  padding: 2px 6px;
-}
-.profile-add-done:hover {
-  color: var(--bone);
 }
 
 /* ── Character row (in profile group) ──────────── */
