@@ -99,14 +99,6 @@
               </div>
             </div>
 
-            <!-- Batch Profile Assignment -->
-            <div class="settings-section" id="batch-assign-section">
-              <div class="section-label">Batch Assign Profiles</div>
-              <div id="batch-profile-rows">
-                <!-- Populated by JS: one .small-btn row per profile -->
-              </div>
-            </div>
-
           </div>
         </div>
 
@@ -6092,71 +6084,6 @@ function updateProfileIndicator() {
     if (el) {
         const profiles = charData.hermes_profiles || [];
         el.textContent = profiles.length > 0 ? profiles.join(", ") : "Global (no profile)";
-    }
-}
-
-function renderBatchAssignRows() {
-    const container = document.getElementById("batch-profile-rows");
-    if (!container) return;
-
-    const profiles = window._availableProfiles || [];
-    container.innerHTML = "";
-
-    for (const p of profiles) {
-        if (p.is_global) continue;
-
-        const row = document.createElement("div");
-        row.className = "slider-row";
-
-        const label = document.createElement("span");
-        label.className = "slider-label";
-        label.textContent = p.name;
-
-        const btn = document.createElement("button");
-        btn.className = "small-btn";
-        btn.textContent = "Assign All";
-        btn.title = `Assign all visible characters to "${p.name}"`;
-
-        // Count characters already assigned
-        const assignedCount = (window._allCharacters || []).filter(
-            c => (c.hermes_profiles || []).includes(p.name)
-        ).length;
-
-        const countSpan = document.createElement("span");
-        countSpan.className = "slider-hint";
-        countSpan.textContent = `${assignedCount} assigned`;
-
-        btn.addEventListener("click", async () => {
-            const allChars = window._allCharacters || [];
-            const unassigned = allChars.filter(
-                c => !(c.hermes_profiles || []).includes(p.name)
-            );
-            if (unassigned.length === 0) {
-                Modal.alert("All characters are already assigned to this profile.");
-                return;
-            }
-            const confirmed = await Modal.confirm(
-                `Assign "${p.name}" to ${unassigned.length} character(s)?`,
-                "BATCH ASSIGN"
-            );
-            if (!confirmed) return;
-
-            for (const c of unassigned) {
-                const charProfiles = c.hermes_profiles || [];
-                c.hermes_profiles = [...charProfiles, p.name];
-                send("save_character", {
-                    id: c.id,
-                    data: { hermes_profiles: c.hermes_profiles }
-                });
-            }
-            // Refresh count after batch
-            setTimeout(() => renderBatchAssignRows(), 500);
-        });
-
-        row.appendChild(label);
-        row.appendChild(btn);
-        row.appendChild(countSpan);
-        container.appendChild(row);
     }
 }
 
