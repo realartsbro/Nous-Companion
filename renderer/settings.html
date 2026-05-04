@@ -6005,6 +6005,7 @@ function buildProfileGroup(profileName, characters, isGlobal) {
         <span class="group-arrow">•</span>
         <span class="profile-group-name">${isGlobal ? 'Global' : profileName}</span>
         <span class="profile-group-count">${characters.length} character${characters.length !== 1 ? 's' : ''}</span>
+        ${isGlobal ? '' : '<span class="profile-add-btn" id="add-btn-' + profileName.replace(/[^a-z0-9]/gi, '_') + '">+ Add</span>'}
     `;
     header.addEventListener("click", () => {
         group.classList.toggle("collapsed");
@@ -6019,6 +6020,59 @@ function buildProfileGroup(profileName, characters, isGlobal) {
 
     const body = document.createElement("div");
     body.className = "profile-group-body";
+
+    // Only named profiles get the + Add button
+    if (!isGlobal) {
+        const addBtnId = 'add-btn-' + profileName.replace(/[^a-z0-9]/gi, '_');
+
+        // Create add-list container (hidden by default)
+        const addList = document.createElement("div");
+        addList.className = "profile-add-list";
+        addList.id = addBtnId + '-list';
+        addList.style.display = "none";
+        group.insertBefore(addList, body);
+
+        // Build list of characters NOT in this profile
+        const allChars = window._allCharacters || [];
+        const notInProfile = allChars.filter(c => !(c.hermes_profiles || []).includes(profileName) && c.id !== 'nous');
+        for (const ac of notInProfile) {
+            const item = document.createElement("label");
+            item.className = "profile-add-item";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.addEventListener("change", () => {
+                if (cb.checked) {
+                    const updated = [...(ac.hermes_profiles || []), profileName];
+                    send("save_character", { id: ac.id, data: { hermes_profiles: updated } });
+                    cb.disabled = true;
+                }
+            });
+            item.appendChild(cb);
+            item.appendChild(document.createTextNode(ac.name));
+            addList.appendChild(item);
+        }
+
+        // Done button
+        const doneBtn = document.createElement("span");
+        doneBtn.className = "profile-add-done";
+        doneBtn.textContent = "Done";
+        doneBtn.addEventListener("click", () => { addList.style.display = "none"; });
+        addList.appendChild(doneBtn);
+
+        // Toggle handler (use timeout so header click doesn't toggle it)
+        setTimeout(() => {
+            const btnEl = document.getElementById(addBtnId);
+            if (btnEl) {
+                btnEl.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const isOpen = addList.style.display !== "none";
+                    // Close all other add lists first
+                    document.querySelectorAll(".profile-add-list").forEach(el => el.style.display = "none");
+                    addList.style.display = isOpen ? "none" : "block";
+                });
+            }
+        }, 0);
+    }
 
     for (const c of characters) {
         const row = document.createElement("div");
