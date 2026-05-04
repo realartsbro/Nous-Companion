@@ -3885,7 +3885,7 @@
         case "characters":
           if (data.characters) populateCharacters(data.characters, data.active);
           if (document.getElementById("page-profiles")?.classList.contains("active")) {
-              renderProfileMatrix(
+              renderProfileGroups(
                   data.characters,
                   window._availableProfiles || [],
                   window._activeProfile
@@ -3896,7 +3896,7 @@
           window._availableProfiles = data.profiles || [];
           window._activeProfile = data.active_profile;
           if (document.getElementById("page-profiles")?.classList.contains("active")) {
-              renderProfileMatrix(
+              renderProfileGroups(
                   window._allCharacters || [],
                   window._availableProfiles,
                   window._activeProfile
@@ -5810,118 +5810,157 @@ function buildRing() {
       });
     })();
 
-    function renderProfileMatrix(characters, profiles, activeProfile) {
-        const container = document.getElementById("profile-matrix-container");
-        if (!container) return;
+function renderProfileGroups(characters, profiles, activeProfile) {
+    const container = document.getElementById("profile-groups-container");
+    const filterBar = document.getElementById("profile-filter-bar");
+    if (!container || !filterBar) return;
 
-        console.log("[matrix] render:", {
-            chars: characters?.length,
-            profs: profiles?.length,
-            activeProfile
-        });
-
-        if (!characters || !characters.length || !profiles || !profiles.length) {
-            container.innerHTML = '<div class="empty-state">No characters or profiles configured.</div>';
-            return;
-        }
-
-        container.innerHTML = "";
-
-        const table = document.createElement("table");
-        table.className = "profile-matrix";
-
-        // --- THEAD ---
-        const thead = document.createElement("thead");
-        const headerRow = document.createElement("tr");
-
-        const cornerTh = document.createElement("th");
-        cornerTh.textContent = "Character";
-        headerRow.appendChild(cornerTh);
-
-        for (const p of profiles) {
-            const th = document.createElement("th");
-            if (p.is_global) th.classList.add("global-col");
-            else if (p.is_active) th.classList.add("active-col");
-            else th.classList.add("inactive-col");
-            th.textContent = p.is_global ? "Global" : p.name;
-            headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // --- TBODY ---
-        const tbody = document.createElement("tbody");
-
-        for (const c of characters) {
-            const row = document.createElement("tr");
-
-            const nameCell = document.createElement("td");
-            nameCell.className = "char-name";
-            nameCell.textContent = c.name;
-            row.appendChild(nameCell);
-
-            for (const p of profiles) {
-                const cell = document.createElement("td");
-                if (p.is_global) cell.classList.add("global-col");
-                else if (!p.is_active) cell.classList.add("inactive-col");
-
-                const radio = document.createElement("input");
-                radio.type = "radio";
-                radio.name = `profile_${c.id}`;
-                radio.value = p.name;
-
-                // bound_profile from get_characters response, or fall back to
-                // hermes_profile from character_list broadcasts. Both null/None or
-                // empty string mean "not assigned to any profile" (Global).
-                const profiles = c.hermes_profiles || [];
-                const profileKey = profiles.length > 0 ? profiles[0] : (
-                    c.bound_profile !== undefined && c.bound_profile !== null
-                        ? c.bound_profile
-                        : (c.hermes_profile || null)
-                );
-                const isAssigned = (p.is_global && profiles.length === 0)
-                    || (!p.is_global && profiles.includes(p.name));
-                // Note: After save_character, the backend calls _broadcast_character_catalog()
-                // which sends raw character_list (hermes_profile only, NOT bound_profile).
-                // The fallback above handles this, but any new features depending on
-                // visible/mismatch_profile will NOT work in catalog responses.
-                radio.checked = isAssigned;
-
-                if (isAssigned && !p.is_global && !p.is_active) {
-                    radio.classList.add("cross-profile");
-                }
-                if (p.is_global) {
-                    radio.classList.add("global-radio");
-                }
-
-                radio.addEventListener("change", () => {
-                    if (!radio.checked) return;
-
-                    const newProfile = p.is_global ? null : p.name;
-                    const charId = c.id;
-
-                    // Update local cache optimistically
-                    const charData = window._allCharacters?.find(x => x.id === charId);
-                    if (charData) charData.hermes_profiles = newProfile ? [newProfile] : [];
-
-                    // Use the existing send() helper which handles Tauri bridge + callbacks
-                    send("save_character", {
-                        id: charId,
-                        data: { hermes_profiles: newProfile ? [newProfile] : [] }
-                    });
-
-                    // Note: On save failure, the character_saved handler re-fetches
-                    // characters, which corrects the radio on re-render.
-                });
-
-                cell.appendChild(radio);
-                row.appendChild(cell);
-            }
-            tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        container.appendChild(table);
+    if (!characters || !characters.length || !profiles || !profiles.length) {
+        container.innerHTML = '<div class="empty-state">No characters or profiles configured.</div>';
+        filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
+        return;
     }
+
+    // Build profile → characters map
+    const groups = {};
+    const globalChars = [];
+
+    // First pass: build groups
+    for (const p of profiles) {
+        if (p.is_global) continue;
+        groups[p.name] = [];
+    }
+
+    for (const c of characters) {
+        const charProfiles = c.hermes_profiles || [];
+        if (charProfiles.length === 0) {
+            globalChars.push(c);
+        } else {
+            for (const pn of charProfiles) {
+                if (groups[pn]) {
+                    groups[pn].push(c);
+                }
+            }
+        }
+    }
+
+    // Render filter bar
+    filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
+    for (const p of profiles) {
+        if (p.is_global) continue;
+        const btn = document.createElement("button");
+        btn.className = "filter-pill";
+        btn.dataset.filter = p.name;
+        btn.textContent = p.name;
+        filterBar.appendChild(btn);
+    }
+
+    // Filter click handlers
+    filterBar.querySelectorAll(".filter-pill").forEach(btn => {
+        btn.addEventListener("click", () => {
+            filterBar.querySelectorAll(".filter-pill").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            const filter = btn.dataset.filter;
+            container.querySelectorAll(".profile-group").forEach(g => {
+                if (filter === "all" || g.dataset.profile === filter) {
+                    g.style.display = "";
+                } else {
+                    g.style.display = "none";
+                }
+            });
+        });
+    });
+
+    // Render groups
+    container.innerHTML = "";
+
+    // Global group first
+    if (globalChars.length > 0) {
+        container.appendChild(buildProfileGroup("Global", globalChars, true));
+    }
+
+    // Named profile groups
+    for (const p of profiles) {
+        if (p.is_global) continue;
+        const chars = groups[p.name] || [];
+        container.appendChild(buildProfileGroup(p.name, chars, false));
+    }
+}
+
+function buildProfileGroup(profileName, characters, isGlobal) {
+    const group = document.createElement("div");
+    group.className = "profile-group";
+    group.dataset.profile = profileName;
+
+    const header = document.createElement("div");
+    header.className = "profile-group-header";
+    header.innerHTML = `
+        <span class="group-arrow">▼</span>
+        <span class="profile-group-name">${isGlobal ? 'Global' : profileName}</span>
+        <span class="profile-group-count">${characters.length} character${characters.length !== 1 ? 's' : ''}</span>
+    `;
+    header.addEventListener("click", () => {
+        group.classList.toggle("collapsed");
+    });
+
+    const body = document.createElement("div");
+    body.className = "profile-group-body";
+
+    for (const c of characters) {
+        const row = document.createElement("div");
+        row.className = "char-row";
+
+        // Portrait
+        const portrait = document.createElement("div");
+        portrait.className = "char-row-portrait";
+        if (c.portrait_b64) {
+            const img = document.createElement("img");
+            img.src = c.portrait_b64;
+            img.alt = c.name;
+            portrait.appendChild(img);
+        } else {
+            portrait.innerHTML = '<span class="portrait-placeholder"><i data-lucide="user"></i></span>';
+        }
+        row.appendChild(portrait);
+
+        // Name
+        const name = document.createElement("span");
+        name.className = "char-row-name";
+        name.textContent = c.name;
+        row.appendChild(name);
+
+        // Additional profiles (for global or multi-profile chars)
+        const charProfiles = c.hermes_profiles || [];
+        if (charProfiles.length > 1 || (isGlobal && charProfiles.length > 0)) {
+            const profileTags = document.createElement("div");
+            profileTags.className = "char-row-profiles";
+            for (const pn of charProfiles) {
+                if (isGlobal || pn !== profileName) {
+                    const tag = document.createElement("span");
+                    tag.className = "profile-chip";
+                    tag.style.fontSize = "9px";
+                    tag.style.padding = "1px 5px";
+                    tag.textContent = pn;
+                    profileTags.appendChild(tag);
+                }
+            }
+            row.appendChild(profileTags);
+        }
+
+        body.appendChild(row);
+    }
+
+    if (characters.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "char-row";
+        empty.innerHTML = '<span style="color:var(--outline-variant);font-size:11px;font-style:italic;">No characters assigned</span>';
+        body.appendChild(empty);
+    }
+
+    group.appendChild(header);
+    group.appendChild(body);
+    return group;
+}
 
 // ── Character Profile Management ─────────────────────────────────────
 
@@ -6311,7 +6350,7 @@ function openProfilePopover(anchorEl, charId, currentProfiles) {
         }
       } else if (pageId === 'profiles') {
         // Re-render matrix with cached data when switching to PROFILES tab
-        renderProfileMatrix(
+        renderProfileGroups(
             window._allCharacters || [],
             window._availableProfiles || [],
             window._activeProfile
