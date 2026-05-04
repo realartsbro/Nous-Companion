@@ -3309,6 +3309,7 @@
     let wsReconnectTimer = null;
     let wsConnectWatchdog = null;
     let saveInProgress = false;
+    let _rosterSelectedId = null;
     let WS_HOST = DEFAULT_WS_HOST;
     let WS_PORT = DEFAULT_WS_PORT;
     let WS_URL = `ws://${WS_HOST}:${WS_PORT}`;
@@ -5930,11 +5931,13 @@ function renderRoster() {
     body.className = "profile-group-body roster-grid";
 
     // Track selected character — pre-select the main app's active character
-    let selectedCharId = window._activeCharacterId;
+    if (!_rosterSelectedId) {
+        _rosterSelectedId = window._activeCharacterId;
+    }
 
     for (const c of allChars) {
         const tile = document.createElement("div");
-        tile.className = "roster-tile" + (c.id === selectedCharId ? " selected" : "");
+        tile.className = "roster-tile" + (c.id === _rosterSelectedId ? " selected" : "");
         tile.dataset.charId = c.id;
 
         // Portrait (48x48, centered, matching char-thumb)
@@ -5963,7 +5966,7 @@ function renderRoster() {
 
         // Click selects this character — does NOT change main app's active character
         tile.addEventListener("click", () => {
-            selectedCharId = c.id;
+            _rosterSelectedId = c.id;
             // Update tile selected states
             body.querySelectorAll(".roster-tile").forEach(t => t.classList.remove("selected"));
             tile.classList.add("selected");
@@ -5986,9 +5989,9 @@ function renderRoster() {
     container.prepend(group);
 
     // Pre-render panel for the initially selected character
-    const initialChar = allChars.find(c => c.id === selectedCharId) || allChars[0];
-    if (initialChar) {
-        renderRosterPanel(initialChar, allProfiles);
+    const selectedChar = allChars.find(c => c.id === _rosterSelectedId) || allChars[0];
+    if (selectedChar) {
+        renderRosterPanel(selectedChar, allProfiles);
     }
 }
 
