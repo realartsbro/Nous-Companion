@@ -3899,6 +3899,8 @@
                   window._activeProfile
               );
           }
+          if (currentPageId === 'character') renderCharProfiles();
+          if (currentPageId === 'quick') renderBatchAssignRows();
           break;
         case "profiles":
           window._availableProfiles = data.profiles || [];
@@ -3910,6 +3912,8 @@
                   window._activeProfile
               );
           }
+          if (currentPageId === 'character') renderCharProfiles();
+          if (currentPageId === 'quick') renderBatchAssignRows();
           break;
         case "expressions":
           if (data.expressions) populateExpressions(data.expressions);
@@ -6428,6 +6432,9 @@ function renderBatchAssignRows() {
             window._availableProfiles || [],
             window._activeProfile
         );
+      } else if (pageId === 'quick') {
+        // Render batch assignment rows
+        renderBatchAssignRows();
       }
     }
 
