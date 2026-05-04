@@ -5823,15 +5823,10 @@ function renderProfileGroups(characters, profiles, activeProfile) {
         filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
         return;
     }
-    if (!profiles || !profiles.length) {
-        container.innerHTML = '<div class="empty-state">No Hermes profiles configured. Create profiles via Hermes CLI.</div>';
-        filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
-        return;
-    }
+    // No profiles from Hermes? Roster will still render (characters shown without chips).
 
     // Build profile → characters map
     const groups = {};
-    const globalChars = [];
 
     // First pass: build groups
     for (const p of profiles) {
@@ -5841,13 +5836,9 @@ function renderProfileGroups(characters, profiles, activeProfile) {
 
     for (const c of characters) {
         const charProfiles = c.hermes_profiles || [];
-        if (charProfiles.length === 0) {
-            globalChars.push(c);
-        } else {
-            for (const pn of charProfiles) {
-                if (groups[pn]) {
-                    groups[pn].push(c);
-                }
+        for (const pn of charProfiles) {
+            if (groups[pn]) {
+                groups[pn].push(c);
             }
         }
     }
@@ -5882,10 +5873,7 @@ function renderProfileGroups(characters, profiles, activeProfile) {
     // Render groups
     container.innerHTML = "";
 
-    // Global group first
-    if (globalChars.length > 0) {
-        container.appendChild(buildProfileGroup("Global", globalChars, true));
-    }
+    // Roster replaces Global — handled by renderRoster()
 
     // Named profile groups
     for (const p of profiles) {
