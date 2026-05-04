@@ -2604,7 +2604,6 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             if char_id and self.char_manager.save_character(char_id, char_data):
                 # Reload the character so changes are live
                 self.char_manager._load_all()
-                self.char_manager.switch(char_id)
                 if self.char_manager.active:
                     self._persist_active_character_pref(char_id)
                     self._sync_runtime_to_active_character(reset_animation=True)
