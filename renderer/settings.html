@@ -5846,8 +5846,13 @@ function renderProfileGroups(characters, profiles, activeProfile) {
     const filterBar = document.getElementById("profile-filter-bar");
     if (!container || !filterBar) return;
 
-    if (!characters || !characters.length || !profiles || !profiles.length) {
-        container.innerHTML = '<div class="empty-state">No characters or profiles configured.</div>';
+    if (!characters || !characters.length) {
+        container.innerHTML = '<div class="empty-state">No characters configured.</div>';
+        filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
+        return;
+    }
+    if (!profiles || !profiles.length) {
+        container.innerHTML = '<div class="empty-state">No Hermes profiles configured. Create profiles via Hermes CLI.</div>';
         filterBar.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
         return;
     }
