@@ -1156,72 +1156,106 @@
   background: var(--surface-container-high);
   border-color: var(--outline-variant);
 }
-/* ── Roster chip toggles ──────────── */
-.roster-row {
-  gap: 8px;
+/* ── Roster tile grid (matching char-carousel-item) ──────────── */
+.roster-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
 }
-.roster-chips {
-  gap: 3px;
-  flex: 1;
-  justify-content: flex-end;
-}
-.roster-chip {
-  font-size: 9px;
-  padding: 1px 6px;
+.roster-tile {
+  flex-shrink: 0;
+  width: 56px;
   cursor: pointer;
-  transition: all 0.12s;
-  user-select: none;
+  text-align: center;
+  transition: all 0.15s;
+  opacity: 0.6;
 }
-.roster-chip.assigned {
-  background: var(--surface-elevated);
-  border-color: var(--secondary-container);
-  color: var(--secondary);
+.roster-tile:hover { opacity: 0.9; }
+.roster-tile-img {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 24px;
 }
-.roster-chip.unassigned {
-  display: none;           /* hidden by default */
-  background: transparent;
-  border-color: var(--divider);
-  color: var(--outline);
-  opacity: 0.7;
+.roster-tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-.roster-chips:hover .roster-chip.unassigned {
-  display: inline-flex;    /* reveal on row hover */
-}
-.roster-chip.unassigned:hover {
-  opacity: 1;
-  border-color: var(--outline-variant);
-  color: var(--bone);
-}
-.roster-global-hint {
+.roster-tile-name {
   font-family: var(--font-ui);
-  font-size: 9px;
-  font-style: italic;
+  font-size: 11px;
   color: var(--outline);
-  opacity: 0.7;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.roster-header {
-  cursor: default;
-  border-left: 2px solid var(--secondary-container);
-  padding-left: 6px;
+
+/* ── Roster popover ──────────── */
+.roster-popover {
+  position: fixed;
+  z-index: 50;
+  min-width: 170px;
+  background: var(--base);
+  border: 1px solid var(--divider);
+  padding: 6px 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
 }
-.roster-header:hover {
+.roster-popover-title {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bone);
+  padding: 4px 10px 6px;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 4px;
+}
+.roster-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.roster-popover-item:hover {
+  background: var(--surface-elevated);
+}
+.roster-popover-item input[type="checkbox"] {
+  accent-color: var(--secondary);
+}
+.roster-popover-divider {
+  height: 1px;
+  background: var(--divider);
+  margin: 3px 8px;
+}
+.roster-popover-clear {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 6px 10px 0;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--outline);
   background: transparent;
+  border: 1px solid var(--divider);
+  cursor: pointer;
+  padding: 3px 0;
+  text-align: center;
 }
-/* Roster body gets a subtle tint to distinguish from profile sections */
-.profile-group[data-profile="roster"] .profile-group-body {
-  background: rgba(255,255,255,0.015);
-  border-radius: 2px;
-}
-.profile-chip.global-chip {
-  color: var(--outline-variant);
-  border-style: dashed;
-  font-style: italic;
-}
-.profile-chip.overflow-chip {
-  color: var(--outline-variant);
-  background: transparent;
-  border: 1px dashed var(--divider);
-  font-style: italic;
+.roster-popover-clear:hover {
+  color: var(--error);
+  border-color: var(--error);
 }
 
         .model-search {
@@ -5919,7 +5953,7 @@ function renderRoster() {
     const allChars = window._allCharacters || [];
     const allProfiles = (window._availableProfiles || []).filter(p => !p.is_global);
 
-    // Remove old Roster section if exists (re-render), then prepend
+    // Remove old Roster section if exists
     const oldRoster = container.querySelector('.profile-group[data-profile="roster"]');
     if (oldRoster) oldRoster.remove();
 
@@ -5928,89 +5962,153 @@ function renderRoster() {
     group.className = "profile-group";
     group.dataset.profile = "roster";
 
-    // Header (non-interactive — shows character count)
+    // Simple section-label header (matching CHARACTER tab's "Character")
     const header = document.createElement("div");
-    header.className = "profile-group-header roster-header";
-    header.innerHTML = `
-        <span class="group-arrow">•</span>
-        <span class="profile-group-name">Roster</span>
-        <span class="profile-group-count">${allChars.length} character${allChars.length !== 1 ? 's' : ''}</span>
-    `;
+    header.className = "section-label";
+    header.style.marginTop = "8px";
+    header.textContent = "Roster";
 
     const body = document.createElement("div");
-    body.className = "profile-group-body";
+    body.className = "profile-group-body roster-grid";
 
     for (const c of allChars) {
-        const row = document.createElement("div");
-        row.className = "char-row roster-row";
+        const tile = document.createElement("div");
+        tile.className = "roster-tile";
+        tile.dataset.charId = c.id;
 
-        // Portrait
-        const portrait = document.createElement("div");
-        portrait.className = "char-row-portrait";
+        // Portrait (48x48, centered, matching char-thumb)
+        const portraitDiv = document.createElement("div");
+        portraitDiv.className = "roster-tile-img";
         if (c.portrait_b64) {
             const img = document.createElement("img");
             img.src = c.portrait_b64;
             img.alt = c.name;
-            portrait.appendChild(img);
+            portraitDiv.appendChild(img);
         } else if (c.sprite_preview_b64) {
             const img = document.createElement("img");
             img.src = c.sprite_preview_b64;
             img.alt = c.name;
-            portrait.appendChild(img);
+            portraitDiv.appendChild(img);
         } else {
-            portrait.innerHTML = '<div class="portrait-placeholder">👤</div>';
+            portraitDiv.textContent = "👤";
         }
-        row.appendChild(portrait);
+        tile.appendChild(portraitDiv);
 
-        // Name
-        const name = document.createElement("span");
-        name.className = "char-row-name";
-        name.textContent = c.name;
-        row.appendChild(name);
+        // Name (matching char-label)
+        const nameEl = document.createElement("div");
+        nameEl.className = "roster-tile-name";
+        nameEl.textContent = c.name;
+        tile.appendChild(nameEl);
 
-        // Profile chip toggles
-        const chipContainer = document.createElement("div");
-        chipContainer.className = "char-row-profiles roster-chips";
-        const currentProfiles = c.hermes_profiles || [];
+        // Click opens the unified popover
+        tile.addEventListener("click", () => {
+            openRosterPopover(c, tile);
+        });
 
-        for (const p of allProfiles) {
-            const chip = document.createElement("span");
-            const isAssigned = currentProfiles.includes(p.name);
-            chip.className = "profile-chip roster-chip" + (isAssigned ? " assigned" : " unassigned");
-            chip.textContent = p.name;
-            chip.title = isAssigned ? `Remove from ${p.name}` : `Add to ${p.name}`;
-            chip.addEventListener("click", () => {
-                const updated = isAssigned
-                    ? (c.hermes_profiles || []).filter(n => n !== p.name)
-                    : [...(c.hermes_profiles || []), p.name];
-                send("save_character", { id: c.id, data: { hermes_profiles: updated } });
-                chip.classList.toggle("assigned");
-                chip.classList.toggle("unassigned");
-                chip.title = chip.classList.contains("assigned")
-                    ? `Remove from ${p.name}`
-                    : `Add to ${p.name}`;
-            });
-            chipContainer.appendChild(chip);
-        }
-
-        if (currentProfiles.length === 0 && allProfiles.length > 0) {
-            const hint = document.createElement("span");
-            hint.className = "roster-global-hint";
-            hint.textContent = "global";
-            chipContainer.appendChild(hint);
-        }
-
-        row.appendChild(chipContainer);
-        body.appendChild(row);
+        body.appendChild(tile);
     }
 
     group.appendChild(header);
     group.appendChild(body);
-
-    // Remove the old Global section if it exists, then prepend Roster
-    const oldGlobal = container.querySelector('.profile-group[data-profile="Global"]');
-    if (oldGlobal) oldGlobal.remove();
     container.prepend(group);
+}
+
+/**
+ * Unified popover for assigning profiles to a character.
+ * Opens anchored to the clicked tile. One popover at a time.
+ */
+function openRosterPopover(charData, anchorEl) {
+    // Remove any existing roster popover
+    const existing = document.querySelector(".roster-popover");
+    if (existing) existing.remove();
+
+    const allProfiles = (window._availableProfiles || []).filter(p => !p.is_global);
+    const currentProfiles = charData.hermes_profiles || [];
+
+    const popover = document.createElement("div");
+    popover.className = "roster-popover";
+
+    // Character name at top
+    const title = document.createElement("div");
+    title.className = "roster-popover-title";
+    title.textContent = charData.name;
+    popover.appendChild(title);
+
+    // "Global" option
+    const globalItem = document.createElement("label");
+    globalItem.className = "roster-popover-item";
+    const globalCb = document.createElement("input");
+    globalCb.type = "checkbox";
+    globalCb.checked = currentProfiles.length === 0;
+    globalCb.addEventListener("change", () => {
+        if (globalCb.checked) {
+            send("save_character", { id: charData.id, data: { hermes_profiles: [] } });
+            popover.querySelectorAll('.roster-popover-item.named input').forEach(cb => cb.checked = false);
+        }
+    });
+    globalItem.appendChild(globalCb);
+    globalItem.appendChild(document.createTextNode("Global (no profile)"));
+    popover.appendChild(globalItem);
+
+    // Divider
+    const divider = document.createElement("div");
+    divider.className = "roster-popover-divider";
+    popover.appendChild(divider);
+
+    // Named profile checkboxes
+    for (const p of allProfiles) {
+        const item = document.createElement("label");
+        item.className = "roster-popover-item named";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = currentProfiles.includes(p.name);
+        cb.addEventListener("change", () => {
+            if (cb.checked) globalCb.checked = false;
+            const checked = [];
+            popover.querySelectorAll('.roster-popover-item.named input').forEach(c => {
+                if (c.checked) checked.push(c.dataset.profileName);
+            });
+            send("save_character", { id: charData.id, data: { hermes_profiles: checked } });
+        });
+        cb.dataset.profileName = p.name;
+        item.appendChild(cb);
+        item.appendChild(document.createTextNode(p.name));
+        popover.appendChild(item);
+    }
+
+    // Clear All button
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "roster-popover-clear";
+    clearBtn.textContent = "Clear All";
+    clearBtn.addEventListener("click", () => {
+        send("save_character", { id: charData.id, data: { hermes_profiles: [] } });
+        globalCb.checked = true;
+        popover.querySelectorAll('.roster-popover-item.named input').forEach(cb => cb.checked = false);
+    });
+    popover.appendChild(clearBtn);
+
+    document.body.appendChild(popover);
+
+    // Position relative to anchor
+    const rect = anchorEl.getBoundingClientRect();
+    const popRect = popover.getBoundingClientRect();
+    // Center popover under the tile
+    let left = rect.left + rect.width / 2 - popRect.width / 2;
+    let top = rect.bottom + 4;
+    // Keep within viewport
+    if (left < 4) left = 4;
+    if (left + popRect.width > window.innerWidth - 4) left = window.innerWidth - popRect.width - 4;
+    popover.style.left = left + "px";
+    popover.style.top = top + "px";
+
+    // Close on outside click
+    const closeHandler = (e) => {
+        if (!popover.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
+            popover.remove();
+            document.removeEventListener("click", closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener("click", closeHandler), 0);
 }
 
 function buildProfileGroup(profileName, characters) {
