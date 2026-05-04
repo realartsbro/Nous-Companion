@@ -3880,6 +3880,7 @@
                   window._availableProfiles || [],
                   window._activeProfile
               );
+              renderRoster();
           }
           break;
         case "profiles":
@@ -3891,6 +3892,7 @@
                   window._availableProfiles,
                   window._activeProfile
               );
+              renderRoster();
           }
           break;
         case "expressions":
@@ -5893,6 +5895,107 @@ function renderProfileGroups(characters, profiles, activeProfile) {
     }
 }
 
+function renderRoster() {
+    const container = document.getElementById("profile-groups-container");
+    if (!container) return;
+
+    const allChars = window._allCharacters || [];
+    const allProfiles = (window._availableProfiles || []).filter(p => !p.is_global);
+
+    // Remove old Roster section if exists (re-render), then prepend
+    const oldRoster = container.querySelector('.profile-group[data-profile="roster"]');
+    if (oldRoster) oldRoster.remove();
+
+    // Build roster section
+    const group = document.createElement("div");
+    group.className = "profile-group";
+    group.dataset.profile = "roster";
+
+    // Header (non-interactive — shows character count)
+    const header = document.createElement("div");
+    header.className = "profile-group-header roster-header";
+    header.innerHTML = `
+        <span class="group-arrow">•</span>
+        <span class="profile-group-name">Roster</span>
+        <span class="profile-group-count">${allChars.length} character${allChars.length !== 1 ? 's' : ''}</span>
+    `;
+
+    const body = document.createElement("div");
+    body.className = "profile-group-body";
+
+    for (const c of allChars) {
+        const row = document.createElement("div");
+        row.className = "char-row roster-row";
+
+        // Portrait
+        const portrait = document.createElement("div");
+        portrait.className = "char-row-portrait";
+        if (c.portrait_b64) {
+            const img = document.createElement("img");
+            img.src = c.portrait_b64;
+            img.alt = c.name;
+            portrait.appendChild(img);
+        } else if (c.sprite_preview_b64) {
+            const img = document.createElement("img");
+            img.src = c.sprite_preview_b64;
+            img.alt = c.name;
+            portrait.appendChild(img);
+        } else {
+            portrait.innerHTML = '<div class="portrait-placeholder">👤</div>';
+        }
+        row.appendChild(portrait);
+
+        // Name
+        const name = document.createElement("span");
+        name.className = "char-row-name";
+        name.textContent = c.name;
+        row.appendChild(name);
+
+        // Profile chip toggles
+        const chipContainer = document.createElement("div");
+        chipContainer.className = "char-row-profiles roster-chips";
+        const currentProfiles = c.hermes_profiles || [];
+
+        for (const p of allProfiles) {
+            const chip = document.createElement("span");
+            const isAssigned = currentProfiles.includes(p.name);
+            chip.className = "profile-chip roster-chip" + (isAssigned ? " assigned" : " unassigned");
+            chip.textContent = p.name;
+            chip.title = isAssigned ? `Remove from ${p.name}` : `Add to ${p.name}`;
+            chip.addEventListener("click", () => {
+                const updated = isAssigned
+                    ? (c.hermes_profiles || []).filter(n => n !== p.name)
+                    : [...(c.hermes_profiles || []), p.name];
+                send("save_character", { id: c.id, data: { hermes_profiles: updated } });
+                chip.classList.toggle("assigned");
+                chip.classList.toggle("unassigned");
+                chip.title = chip.classList.contains("assigned")
+                    ? `Remove from ${p.name}`
+                    : `Add to ${p.name}`;
+            });
+            chipContainer.appendChild(chip);
+        }
+
+        if (currentProfiles.length === 0 && allProfiles.length > 0) {
+            const hint = document.createElement("span");
+            hint.className = "roster-global-hint";
+            hint.textContent = "global";
+            chipContainer.appendChild(hint);
+        }
+
+        row.appendChild(chipContainer);
+        body.appendChild(row);
+    }
+
+    group.appendChild(header);
+    group.appendChild(body);
+
+    // Remove the old Global section if it exists, then prepend Roster
+    const oldGlobal = container.querySelector('.profile-group[data-profile="Global"]');
+    if (oldGlobal) oldGlobal.remove();
+    container.prepend(group);
+}
+
 function buildProfileGroup(profileName, characters, isGlobal) {
     const group = document.createElement("div");
     group.className = "profile-group";
@@ -6318,6 +6421,7 @@ function updateProfileIndicator() {
             window._availableProfiles || [],
             window._activeProfile
         );
+        renderRoster();
       }
     }
 
