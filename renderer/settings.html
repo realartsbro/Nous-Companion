@@ -5647,11 +5647,14 @@ function buildRing() {
                 // bound_profile from get_characters response, or fall back to
                 // hermes_profile from character_list broadcasts. Both null/None or
                 // empty string mean "not assigned to any profile" (Global).
-                const profileKey = c.bound_profile !== undefined && c.bound_profile !== null
-                    ? c.bound_profile
-                    : (c.hermes_profile || null);
-                const isAssigned = (p.is_global && !profileKey)
-                    || (!p.is_global && profileKey === p.name);
+                const profiles = c.hermes_profiles || [];
+                const profileKey = profiles.length > 0 ? profiles[0] : (
+                    c.bound_profile !== undefined && c.bound_profile !== null
+                        ? c.bound_profile
+                        : (c.hermes_profile || null)
+                );
+                const isAssigned = (p.is_global && profiles.length === 0)
+                    || (!p.is_global && profiles.includes(p.name));
                 // Note: After save_character, the backend calls _broadcast_character_catalog()
                 // which sends raw character_list (hermes_profile only, NOT bound_profile).
                 // The fallback above handles this, but any new features depending on
@@ -5673,12 +5676,12 @@ function buildRing() {
 
                     // Update local cache optimistically
                     const charData = window._allCharacters?.find(x => x.id === charId);
-                    if (charData) charData.bound_profile = newProfile;
+                    if (charData) charData.hermes_profiles = newProfile ? [newProfile] : [];
 
                     // Use the existing send() helper which handles Tauri bridge + callbacks
                     send("save_character", {
                         id: charId,
-                        data: { hermes_profile: newProfile }
+                        data: { hermes_profiles: newProfile ? [newProfile] : [] }
                     });
 
                     // Note: On save failure, the character_saved handler re-fetches
