@@ -6066,6 +6066,19 @@ function buildProfileGroup(profileName, characters, isGlobal) {
             row.appendChild(profileTags);
         }
 
+        // Remove button (NOT on Global section rows)
+        if (!isGlobal) {
+            const removeBtn = document.createElement("span");
+            removeBtn.className = "char-row-remove";
+            removeBtn.textContent = "✕";
+            removeBtn.title = `Remove from ${profileName}`;
+            removeBtn.addEventListener("click", () => {
+                const updated = (c.hermes_profiles || []).filter(p => p !== profileName);
+                send("save_character", { id: c.id, data: { hermes_profiles: updated } });
+            });
+            row.appendChild(removeBtn);
+        }
+
         body.appendChild(row);
     }
 
