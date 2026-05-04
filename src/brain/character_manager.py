@@ -924,6 +924,7 @@ class CharacterManager:
             "brief_quips": char.brief_quips,
             "expression_names": char.compositor.expression_names if char.compositor else [],
             "display_mode": char.display_mode,
+            "hermes_profiles": char.hermes_profiles,
         }
         # Scan sprite groups (_normal, _serious, etc.)
         # Use the compositor's actual sprite directory, which may be a subdir
