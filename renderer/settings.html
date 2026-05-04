@@ -5916,13 +5916,23 @@ function buildProfileGroup(profileName, characters, isGlobal) {
 
     const header = document.createElement("div");
     header.className = "profile-group-header";
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    header.setAttribute("aria-expanded", "true");
     header.innerHTML = `
-        <span class="group-arrow">▼</span>
+        <span class="group-arrow">•</span>
         <span class="profile-group-name">${isGlobal ? 'Global' : profileName}</span>
         <span class="profile-group-count">${characters.length} character${characters.length !== 1 ? 's' : ''}</span>
     `;
     header.addEventListener("click", () => {
         group.classList.toggle("collapsed");
+        header.setAttribute("aria-expanded", !group.classList.contains("collapsed"));
+    });
+    header.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            header.click();
+        }
     });
 
     const body = document.createElement("div");
