@@ -1171,6 +1171,9 @@
   border-color: var(--secondary);
   box-shadow: 0 0 6px rgba(190, 201, 192, 0.15);
 }
+.profile-group[data-profile="roster"] {
+  margin-top: 0;
+}
 .roster-tile-img {
   width: 48px;
   height: 48px;
@@ -5898,7 +5901,6 @@ function renderRoster() {
     // Simple section-label header (matching CHARACTER tab's "Character")
     const header = document.createElement("div");
     header.className = "section-label";
-    header.style.marginTop = "8px";
     header.textContent = "Roster";
 
     const body = document.createElement("div");
