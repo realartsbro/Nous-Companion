@@ -5960,7 +5960,7 @@ function buildProfileGroup(profileName, characters, isGlobal) {
 
         // Build list of characters NOT in this profile
         const allChars = window._allCharacters || [];
-        const notInProfile = allChars.filter(c => !(c.hermes_profiles || []).includes(profileName) && c.id !== 'nous');
+        const notInProfile = allChars.filter(c => !(c.hermes_profiles || []).includes(profileName));
         for (const ac of notInProfile) {
             const item = document.createElement("label");
             item.className = "profile-add-item";
