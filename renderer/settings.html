@@ -1178,28 +1178,39 @@
   color: var(--secondary);
 }
 .roster-chip.unassigned {
+  display: none;           /* hidden by default */
   background: transparent;
   border-color: var(--divider);
-  color: var(--outline-variant);
-  opacity: 0.6;
+  color: var(--outline);
+  opacity: 0.7;
+}
+.roster-chips:hover .roster-chip.unassigned {
+  display: inline-flex;    /* reveal on row hover */
 }
 .roster-chip.unassigned:hover {
   opacity: 1;
   border-color: var(--outline-variant);
-  color: var(--on-surface-variant);
+  color: var(--bone);
 }
 .roster-global-hint {
   font-family: var(--font-ui);
   font-size: 9px;
   font-style: italic;
-  color: var(--outline-variant);
-  opacity: 0.6;
+  color: var(--outline);
+  opacity: 0.7;
 }
 .roster-header {
   cursor: default;
+  border-left: 2px solid var(--secondary-container);
+  padding-left: 6px;
 }
 .roster-header:hover {
   background: transparent;
+}
+/* Roster body gets a subtle tint to distinguish from profile sections */
+.profile-group[data-profile="roster"] .profile-group-body {
+  background: rgba(255,255,255,0.015);
+  border-radius: 2px;
 }
 .profile-chip.global-chip {
   color: var(--outline-variant);
@@ -3146,6 +3157,24 @@
   background: var(--surface-elevated);
   color: var(--bone);
   border-color: var(--secondary-container);
+}
+
+/* ── Profile character remove button ──────────── */
+.char-row-remove {
+  display: none;
+  font-size: 14px;
+  color: var(--outline);
+  cursor: pointer;
+  margin-left: auto;
+  padding: 0 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.char-row:hover .char-row-remove {
+  display: inline;
+}
+.char-row-remove:hover {
+  color: var(--error);
 }
 
 /* ── Profile group (collapsible section) ──────────── */
@@ -6059,6 +6088,17 @@ function buildProfileGroup(profileName, characters) {
             }
             row.appendChild(profileTags);
         }
+
+        // Remove from this profile
+        const removeBtn = document.createElement("span");
+        removeBtn.className = "char-row-remove";
+        removeBtn.textContent = "✕";
+        removeBtn.title = `Remove from ${profileName}`;
+        removeBtn.addEventListener("click", () => {
+            const updated = (c.hermes_profiles || []).filter(p => p !== profileName);
+            send("save_character", { id: c.id, data: { hermes_profiles: updated } });
+        });
+        row.appendChild(removeBtn);
 
         body.appendChild(row);
     }
