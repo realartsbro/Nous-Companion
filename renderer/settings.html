@@ -126,22 +126,6 @@
               <input type="file" id="character-import-input" accept=".zip,.nous-companion-character.zip,.codec-character.zip" style="display:none;">
             </div>
 
-            <!-- Profiles -->
-            <div class="settings-section" id="char-profile-section">
-              <div class="section-label">Profiles</div>
-              <div id="char-profile-chips" class="profile-chips"></div>
-              <div class="slider-row">
-                <span class="slider-label">Assign</span>
-                <div class="custom-dropdown" id="char-profile-dropdown">
-                  <div class="custom-dropdown-header" id="char-profile-dropdown-header">
-                    <span class="custom-dropdown-selected">Choose profile…</span>
-                    <span class="custom-dropdown-arrow">▾</span>
-                  </div>
-                  <div class="custom-dropdown-list" id="char-profile-dropdown-list"></div>
-                </div>
-              </div>
-            </div>
-
             <!-- Profile indicator (read-only) -->
             <div class="settings-section" id="char-profile-indicator-section" style="border-top: 1px solid var(--divider); padding-top: 8px; margin-top: 4px;">
               <div class="section-label" style="font-size: 9px; letter-spacing: 0.08em;">
@@ -1185,58 +1169,11 @@
   border-style: dashed;
   font-style: italic;
 }
-.profile-chip .chip-remove {
-  font-size: 12px;
-  line-height: 1;
-  color: var(--outline);
-  cursor: pointer;
-  opacity: 0.6;
-  margin-left: 1px;
-}
-.profile-chip .chip-remove:hover {
-  opacity: 1;
-  color: var(--error);
-}
 .profile-chip.overflow-chip {
   color: var(--outline-variant);
   background: transparent;
   border: 1px dashed var(--divider);
   font-style: italic;
-}
-
-/* ── Profile popover ──────────── */
-.profile-popover {
-  position: absolute;
-  z-index: 30;
-  background: var(--base);
-  border: 1px solid var(--divider);
-  padding: 6px 0;
-  min-width: 180px;
-  max-height: 240px;
-  overflow-y: auto;
-}
-.profile-popover-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.profile-popover-item:hover {
-  background: var(--surface-elevated);
-}
-.profile-popover-item input[type="checkbox"] {
-  accent-color: var(--secondary);
-}
-.profile-popover-item .member-count {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--outline);
-  opacity: 0.7;
 }
 
         .model-search {
@@ -6929,19 +6866,6 @@ function renderBatchAssignRows() {
           }
         });
       });
-
-      // ── Profile dropdown toggle ──
-      const profileDropdownHeader = document.getElementById("char-profile-dropdown-header");
-      const profileDropdown = document.getElementById("char-profile-dropdown");
-      if (profileDropdownHeader && profileDropdown) {
-          profileDropdownHeader.addEventListener("click", (e) => {
-              e.stopPropagation();
-              profileDropdown.classList.toggle("open");
-          });
-          document.addEventListener("click", () => {
-              if (profileDropdown) profileDropdown.classList.remove("open");
-          });
-      }
 
       void connect();
       initAudioPlayer();
