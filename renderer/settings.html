@@ -5879,7 +5879,7 @@ function renderProfileGroups(characters, profiles, activeProfile) {
     for (const p of profiles) {
         if (p.is_global) continue;
         const chars = groups[p.name] || [];
-        container.appendChild(buildProfileGroup(p.name, chars, false));
+        container.appendChild(buildProfileGroup(p.name, chars));
     }
 }
 
@@ -5984,7 +5984,7 @@ function renderRoster() {
     container.prepend(group);
 }
 
-function buildProfileGroup(profileName, characters, isGlobal) {
+function buildProfileGroup(profileName, characters) {
     const group = document.createElement("div");
     group.className = "profile-group";
     group.dataset.profile = profileName;
@@ -6058,19 +6058,6 @@ function buildProfileGroup(profileName, characters, isGlobal) {
                 }
             }
             row.appendChild(profileTags);
-        }
-
-        // Remove button (NOT on Global section rows)
-        if (!isGlobal) {
-            const removeBtn = document.createElement("span");
-            removeBtn.className = "char-row-remove";
-            removeBtn.textContent = "✕";
-            removeBtn.title = `Remove from ${profileName}`;
-            removeBtn.addEventListener("click", () => {
-                const updated = (c.hermes_profiles || []).filter(p => p !== profileName);
-                send("save_character", { id: c.id, data: { hermes_profiles: updated } });
-            });
-            row.appendChild(removeBtn);
         }
 
         body.appendChild(row);
