@@ -315,6 +315,11 @@ class CharacterManager:
             for profile_name in list(char.hermes_profiles):
                 if profile_name not in existing_profiles:
                     char.hermes_profiles.remove(profile_name)
+                    logger.warning(
+                        f"Character '{char.id}' references unknown profile "
+                        f"'{profile_name}' — removing. "
+                        f"Available profiles: {sorted(existing_profiles)}"
+                    )
 
     def get_visible_characters(self, active_profile: Optional[str] = None) -> dict[str, "Character"]:
         """Return characters visible for the given profile.
