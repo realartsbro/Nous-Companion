@@ -5253,17 +5253,17 @@
         const opt = document.createElement("option");
         opt.value = c.id;
         let label = c.name;
-        if (c.bound_profile) {
-          if (c.visible) {
-            label += ` ✅ ${c.bound_profile}`;
-          } else {
-            label += ` 🔒 ${c.bound_profile}`;
-          }
+        const profiles = c.hermes_profiles || [];
+        if (profiles.length > 1) {
+          label += ` ✅ +${profiles.length}`;
+        } else if (profiles.length === 1) {
+          const badge = c.visible ? ` ✅ ${profiles[0]}` : ` 🔒 ${profiles[0]}`;
+          label += badge;
         }
         opt.textContent = label;
         if (!c.visible) {
           opt.disabled = true;
-          opt.title = `Bound to ${c.bound_profile} profile — switch profiles to use`;
+          opt.title = `Bound to ${(c.hermes_profiles || []).join(", ")} — switch profiles to use`;
         }
         if (c.id === activeId) opt.selected = true;
         charSelect.appendChild(opt);
