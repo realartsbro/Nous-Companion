@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO="realartsbro/Nous-Companion"
-TAG="v0.1.3"
+TAG="v0.1.4"
 INSTALL_DIR="${NOUS_COMPANION_DIR:-"$HOME/.nous-companion"}"
 BIN_DIR="$HOME/.local/bin"
 

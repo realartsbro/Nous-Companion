@@ -2,7 +2,7 @@
 # Usage: iwr -useb https://raw.githubusercontent.com/realartsbro/Nous-Companion/main/scripts/install.ps1 | iex
 
 $Repo = "realartsbro/Nous-Companion"
-$Tag = "v0.1.3"
+$Tag = "v0.1.4"
 $InstallDir = "$env:LOCALAPPDATA\Nous-Companion"
 
 Write-Host "⬡ Nous Companion" -ForegroundColor Cyan
