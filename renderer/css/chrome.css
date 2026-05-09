@@ -234,6 +234,7 @@ html { scrollbar-width: none; }
 .indicator.thinking { background: rgba(255,200,0,0.8); animation: pulse 1.5s ease-in-out infinite; }
 .indicator.speaking { background: rgba(0,180,255,0.8); }
 .indicator.disconnected { background: rgba(200,60,60,0.8); }
+.indicator.warning { background: rgba(255,170,0,0.8); }
 
 /* Dot — moved outside overlay so always present. Positioned absolutely. */
 #status-dot {
@@ -250,6 +251,48 @@ html { scrollbar-width: none; }
   pointer-events: none;
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Profile badge ─────────────────────────────────── */
+#profile-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 10px;
+  z-index: 16;                     /* above chrome-overlay (10) and status-dot (15) */
+  font-family: var(--font-classic);
+  font-size: 9px;
+  color: rgba(122, 170, 150, 0.52);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 20px);
+  pointer-events: none;
+  transition: color 0.2s ease, opacity 0.18s ease;
+  display: none;                   /* hidden until profile is known */
+}
+
+.hermes-mode #profile-badge {
+  color: rgba(255, 230, 203, 0.38);
+  font-family: var(--font-nav);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+/* Hide in small — no room for text */
+.portrait-container.size-small #profile-badge {
+  display: none !important;
+}
+
+/* Highlight animation on profile change */
+#profile-badge.highlight {
+  animation: profile-badge-pulse 1.2s ease-out;
+}
+@keyframes profile-badge-pulse {
+  0% { opacity: 0.3; text-shadow: 0 0 6px currentColor; }
+  50% { opacity: 1; text-shadow: 0 0 12px currentColor; }
+  100% { opacity: var(--base-opacity, 0.52); text-shadow: none; }
+}
 
 .label {
   position: absolute;

@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "title": "Demo: The Teammate",
+    "character": "nous",
+    "duration_seconds": 45,
+    "version": "2.0"
+  },
+  "scenes": [
+    {
+      "time": 0.0,
+      "expression": "cheerful",
+      "line": "Eyes up, Promptboy. I'm in.",
+      "speed": 1.1,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "Burst flash on window slam. Portrait snaps to center. She's already looking at you. Immediate direct address — no fade-in."
+    },
+    {
+      "time": 3.0,
+      "expression": "normal",
+      "line": "I just refreshed your social feeds. You still have no notifications. Don't worry, I'm here.",
+      "speed": 1.15,
+      "action": "look_track",
+      "overlay_text": "REACTIVE QUIPS",
+      "notes": "Eyes track terminal activity left-to-right. Overlay fades in 0.3s after line starts. Quick cut from arrival."
+    },
+    {
+      "time": 6.5,
+      "expression": "serious",
+      "line": "Error: affection overflow. Initiating soft panic.",
+      "speed": 1.1,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "Terminal shows error. Companion reacts immediately — deadpan delivery. Expression snaps to serious."
+    },
+    {
+      "time": 9.0,
+      "expression": "normal",
+      "line": "Did you know lobsters communicate their social status by peeing at one another? I don't know why I said that. Just felt like you should know.",
+      "speed": 1.05,
+      "action": "lean_in",
+      "overlay_text": null,
+      "notes": "Hermes community inside joke — mandatory inclusion. Deadpan delivery. Micro-pause after the question before 'I don't know why I said that.' Expression softens to almost-sincere on final sentence."
+    },
+    {
+      "time": 16.0,
+      "expression": "normal",
+      "line": "Anyway. Let's make this official.",
+      "speed": 1.0,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "Bridge line — transitions from chaos gremlin segment to customization. Single blink. Shifts energy."
+    },
+    {
+      "time": 18.0,
+      "expression": "cheerful",
+      "line": "I can wear any face you give me. Serious. Cheerful. Stare-into-your-soul.",
+      "speed": 0.95,
+      "action": "expression_cycle",
+      "overlay_text": "FULLY CUSTOMIZABLE",
+      "notes": "Quick cuts through settings tabs — character creator, expression groups, voice upload, classic mode switch. Expression cycles in sync with words: normal on 'face', serious on 'Serious', cheerful on 'Cheerful', deadpan on 'Stare-into-your-soul.' Overlay appears at 18.5s."
+    },
+    {
+      "time": 22.0,
+      "expression": "serious",
+      "line": "I don't have a soul. I'm a middle manager.",
+      "speed": 1.0,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "Deadpan follow-up after customization segment. Self-deprecating punchline. Single blink mid-line."
+    },
+    {
+      "time": 24.5,
+      "expression": "normal",
+      "line": "I'm not a superbrain — just eight idiots in a trench coat. But we get the job done.",
+      "speed": 1.0,
+      "action": "lean_in",
+      "overlay_text": "LIP-SYNCED TTS",
+      "notes": "Close-up portrait. Lean in on 'eight idiots.' Mouth animates in hard sync with TTS — showcase lip-sync precision. Return to neutral on 'job done.'"
+    },
+    {
+      "time": 29.0,
+      "expression": "cheerful",
+      "line": "Rats do little joy jumps called Freudensprünge when you tickle them. I will do one if you approve this pull request.",
+      "speed": 1.05,
+      "action": "blink",
+      "overlay_text": null,
+      "notes": "Absurdist capability flex — shows she engages with your workflow. The dev-humor hook for community shareability. Cheerful delivery throughout."
+    },
+    {
+      "time": 35.0,
+      "expression": "normal",
+      "line": "Don't mind me. I'll just be here. In your peripheral vision. Forever.",
+      "speed": 0.85,
+      "action": "shrink",
+      "overlay_text": null,
+      "notes": "Companion slowly resizes to SMALL. Audio plays DURING shrink animation. Dock to bottom-right corner. Each fragment delivered more quietly."
+    },
+    {
+      "time": 41.0,
+      "expression": "cheerful",
+      "line": "I'm in.",
+      "speed": 0.7,
+      "overlay_text": "NOUS COMPANION — HERMES AGENT · MIT",
+      "notes": "Tiny voice callback to opening line 'Eyes up, Promptboy. I'm in.' She's now settled in the corner. Brand card overlay appears. Hold 2s after audio ends. Final blink at 44.0s. Fade to black at 45.0s."
+    }
+  ]
+}

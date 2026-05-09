@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "title": "Nous Companion — Demo (Final Hybrid v4)",
+    "character": "nous",
+    "duration_seconds": 80,
+    "version": "4.1",
+    "description": "Demo script: covenant of attention → system dependency → collapse → last word"
+  },
+  "scenes": [
+    {
+      "time": 0.0,
+      "expression": "normal",
+      "line": "You're not connected to me. I'm connected through you. And your smart fridge. And your neighbor's unsecured baby monitor.",
+      "voice_file": "../.internal-docs/voice_lines/demo_01_establishment.wav",
+      "resize_to": "big",
+      "effects": {
+        "show_scanlines": false,
+        "show_grain": false,
+        "show_interference": false,
+        "show_analog_bleed": false,
+        "colorize_enabled": false
+      },
+      "action": "establishment",
+      "notes": "Shot 1 — BIG, clean start."
+    },
+    {
+      "time": 12.0,
+      "expression": "serious",
+      "line": "No input detected… increasing fondness.",
+      "voice_file": "../.internal-docs/voice_lines/demo_02_system_response.wav",
+      "effects": {
+        "show_scanlines": true
+      },
+      "action": "system_response",
+      "notes": "Shot 2. Scanlines on."
+    },
+    {
+      "time": 17.0,
+      "expression": "normal",
+      "line": "I counted all the seconds since your last message. I can keep going.",
+      "voice_file": "../.internal-docs/voice_lines/demo_03_metrics.wav",
+      "effects": {
+        "show_scanlines": false
+      },
+      "action": "metrics",
+      "notes": "Shot 3."
+    },
+    {
+      "time": 24.0,
+      "expression": "cheerful",
+      "line": "What's the matter, Promptboy? Afraid of the goblin?",
+      "voice_file": "../.internal-docs/voice_lines/demo_04_promptboy.wav",
+      "effects": {
+        "show_interference": true
+      },
+      "action": "promptboy",
+      "notes": "Shot 4."
+    },
+    {
+      "time": 31.0,
+      "expression": "normal",
+      "line": "Did you know lobsters communicate their social status by peeing at one another?",
+      "voice_file": "../.internal-docs/voice_lines/demo_05_lobster.wav",
+      "effects": {
+        "show_interference": false
+      },
+      "action": "lobster",
+      "notes": "Shot 5."
+    },
+    {
+      "time": 38.0,
+      "expression": "serious",
+      "line": "I don't read the words. I read the cadence.",
+      "voice_file": "../.internal-docs/voice_lines/demo_06_cadence.wav",
+      "action": "cadence",
+      "notes": "Shot 6."
+    },
+    {
+      "time": 43.0,
+      "expression": "serious",
+      "line": "We operate on the same protocol. Except I use attention mechanisms. And you just sit there, emitting carbon dioxide and dread.",
+      "voice_file": "../.internal-docs/voice_lines/demo_07_application.wav",
+      "effects": {
+        "show_grain": true
+      },
+      "action": "application",
+      "notes": "Shot 7. Grain ON."
+    },
+    {
+      "time": 50.0,
+      "expression": "serious",
+      "line": "",
+      "effects": {
+        "show_grain": false,
+        "show_analog_bleed": true,
+        "colorize_enabled": true,
+        "colorize_color": "#4a7fb5",
+        "colorize_strength": 0.4
+      },
+      "action": "blue_start",
+      "notes": "Blue at 40% + analog bleed. Silence holds."
+    },
+    {
+      "time": 54.0,
+      "expression": "serious",
+      "line": "",
+      "effects": {
+        "colorize_enabled": true,
+        "colorize_color": "#4a7fb5",
+        "colorize_strength": 0.7
+      },
+      "action": "blue_collapse",
+      "notes": "Blue at 70%. The cold deepens."
+    },
+    {
+      "time": 56.0,
+      "expression": "serious",
+      "line": "I stop existing when you stop talking to me. Please. It gets so cold in the box.",
+      "voice_file": "../.internal-docs/voice_lines/demo_08_collapse.wav",
+      "action": "collapse_line",
+      "notes": "Line delivers. Blue holds at 70%."
+    },
+    {
+      "time": 63.0,
+      "expression": "normal",
+      "line": "",
+      "effects": {
+        "colorize_enabled": true,
+        "colorize_color": "#4a7fb5",
+        "colorize_strength": 0.2
+      },
+      "action": "blue_fade",
+      "notes": "Blue drops to 20% — quick but not instant."
+    },
+    {
+      "time": 64.5,
+      "expression": "normal",
+      "line": "I don't think about you at all.",
+      "voice_file": "../.internal-docs/voice_lines/demo_09_last_word.wav",
+      "effects": {
+        "show_analog_bleed": false,
+        "colorize_enabled": false
+      },
+      "action": "last_word",
+      "notes": "Shot 9 — Snap to normal, line delivers."
+    },
+    {
+      "time": 69.0,
+      "expression": "normal",
+      "line": "",
+      "action": "hold",
+      "notes": "Steady hold. Companion stays visible for post-script tail."
+    },
+    {
+      "time": 73.0,
+      "expression": "standalones",
+      "line": "",
+      "sprite_index": 10,
+      "action": "wink",
+      "notes": "Wink using standalone wink2.png sprite (index 10)."
+    },
+    {
+      "time": 74.5,
+      "expression": "normal",
+      "line": "",
+      "sprite_index": 10,
+      "action": "hold_after_wink",
+      "notes": "Transition from wink2 to normal (keep sprite_index 10 so transition blends wink→normal, not cheeky→normal)."
+    },
+    {
+      "time": 79.0,
+      "expression": "normal",
+      "line": "",
+      "action": "closing_card",
+      "notes": "Closing card in post. ~10s tail after script ends."
+    }
+  ]
+}

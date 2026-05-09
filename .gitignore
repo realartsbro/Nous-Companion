@@ -46,6 +46,8 @@ temp_probe.ps1
 
 # Internal development docs — not for public release
 .internal-docs/
+docs/plans/
+docs/scopes/
 
 # Fonts — bundled font protected by .gitignore, served from Hermes install
 renderer/assets/fonts/Collapse-*.woff2

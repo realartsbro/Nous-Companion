@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from hermes_runtime import get_default_omnivoice_url
 
-DEFAULT_REF = str(Path(__file__).resolve().parent.parent / "characters" / "default" / "campbell2" / "vc115902.wav")
+DEFAULT_REF = str(Path(__file__).resolve().parent.parent / "characters" / "default" / "campbell_voice.wav")
 
 
 def main():

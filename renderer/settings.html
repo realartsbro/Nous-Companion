@@ -4139,6 +4139,44 @@
             Modal.alert(msg, "SWITCH BLOCKED");
           }
           break;
+        case "error":
+          console.error("[settings] Server error:", data.error);
+          if (typeof Modal !== 'undefined' && Modal.alert) {
+            Modal.alert(data.error, "Server Error");
+          }
+          break;
+        case "tts_engine_changed":
+          console.log("[settings] TTS engine changed:", data.engine);
+          var ttsSelect = document.getElementById("tts-select");
+          if (ttsSelect && data.engine) {
+            ttsSelect.value = data.engine;
+          }
+          break;
+        case "profile_switch_result":
+          if (!data.success) {
+            console.error("[settings] Profile switch failed:", data.error);
+            if (typeof Modal !== 'undefined' && Modal.alert) {
+              Modal.alert(data.error || "Failed to switch profile", "Profile Switch Error");
+            }
+          }
+          break;
+        case "session_watched":
+          if (!data.ok) {
+            console.warn("[settings] Failed to watch session:", data.session_id);
+          }
+          break;
+        case "session_unwatched":
+          if (!data.ok) {
+            console.warn("[settings] Failed to unwatch session");
+          }
+          break;
+        case "load_scene_result":
+        case "play_scene_result":
+        case "pause_scene_result":
+        case "stop_scene_result":
+        case "scene_status":
+          console.log("[settings] Scene player result:", data.type, data);
+          break;
       }
     }
 
@@ -5281,6 +5319,23 @@
       if (!charSelect) return;
 
       charSelect.innerHTML = "";
+
+      // Empty state: no active character and no visible characters in this profile
+      const anyVisible = characters.some(c => c.visible);
+      if (!activeId && !anyVisible) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No characters assigned to this profile";
+        opt.disabled = true;
+        charSelect.appendChild(opt);
+
+        // Store state for carousel/ring
+        window._allCharacters = characters;
+        window._activeCharacterId = null;
+        updateProfileIndicator();
+        return;
+      }
+
       for (const c of characters) {
         const opt = document.createElement("option");
         opt.value = c.id;
@@ -5930,6 +5985,13 @@ function renderRoster() {
     const body = document.createElement("div");
     body.className = "profile-group-body roster-grid";
 
+    if (allChars.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "No characters in roster";
+        body.appendChild(empty);
+    }
+
     // Track selected character — pre-select the main app's active character
     if (!_rosterSelectedId) {
         _rosterSelectedId = window._activeCharacterId;
@@ -6095,6 +6157,13 @@ function buildProfileGroup(profileName, characters) {
 
     const body = document.createElement("div");
     body.className = "profile-group-body";
+
+    if (characters.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "No characters assigned — drag from Roster or edit a character's profile bindings";
+        body.appendChild(empty);
+    }
 
     for (const c of characters) {
         const row = document.createElement("div");

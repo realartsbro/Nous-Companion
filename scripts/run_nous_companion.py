@@ -90,6 +90,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
     parser.add_argument("--http-port", type=int, default=8766, help="HTTP port for browser access (0 = disable)")
     parser.add_argument("--fps", type=int, default=30, help="Animation frame rate")
+    parser.add_argument("--record", action="store_true", help="Enable event recording")
     args = parser.parse_args()
 
     if args.http_port:
@@ -105,6 +106,8 @@ def main() -> None:
         ws_port=args.port,
         fps=args.fps,
     )
+    if args.record:
+        server.settings["recording_enabled"] = True
     server.run()
 
 

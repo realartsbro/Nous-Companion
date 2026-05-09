@@ -307,7 +307,7 @@
   }
 
   // Element refs (assigned in init)
-  let portrait, portraitCanvas, portraitCtx, textContent, cursor, statusDot, statusLabel, brandLabel, freqDisplay;
+  let portrait, portraitCanvas, portraitCtx, textContent, cursor, statusDot, statusLabel, brandLabel, freqDisplay, profileBadge;
   let exprSelect, charSelect, spriteSizeSelect, reactInput, btnReact, btnSettings, btnCloseApp, settingsPanel;
   let btnPlayPause, waveformCanvas, audioTime, audioInfo, audioPlayer;
   let voiceRefName, btnVoiceRef, voiceRefInput;
@@ -394,6 +394,7 @@
     statusDot = document.getElementById("status-dot");
     statusLabel = document.getElementById("status-label");
     brandLabel = document.getElementById("brand-label");
+    profileBadge = document.getElementById("profile-badge");
     freqDisplay = document.getElementById("freq-display");
     exprSelect = document.getElementById("expr-select");
     charSelect = document.getElementById("char-select");
@@ -1241,6 +1242,9 @@
         updateStatus("speaking");
         isSpeaking = true;
         break;
+      case "audio_started":
+        console.log("[renderer] Audio started:", data);
+        break;
       case "audio_stop":
         stopPlayback();
         updateStatus("connected");
@@ -1248,11 +1252,13 @@
         isSpeaking = false;
         break;
       case "profile_changed":
+        updateProfileBadge(data.profile);
         console.log("[renderer] Profile changed:", data.profile, "Character:", data.active_character);
         // Re-request character list to refresh badges
         send("get_characters", {});
         break;
       case "characters":
+        updateProfileBadge(data.active_profile);
         if (data.characters) {
           populateCharacters(data.characters, data.active);
           updateFrequencyDisplay(data.active);
@@ -1407,6 +1413,11 @@
         }
         break;
 
+      case "overlay":
+        setStartupOverlay(true, data.message);
+        setTimeout(() => setStartupOverlay(false), 5000);
+        break;
+
       case "set_sprite_size":
         // Handle sprite size change from settings popup
         console.log("[nc] Received set_sprite_size:", data.size);
@@ -1434,6 +1445,7 @@
           setCursorVisible(false);
         }
         else if (data.status === "thinking...") updateStatus("thinking");
+        else if (data.status === "fallback_tts") updateStatus("warning");
         break;
       case "hermes_event":
         if (data.event_type === "thinking" || data.event_type === "tool_use") {
@@ -1444,12 +1456,31 @@
           updateStatus("connected");
         }
         break;
+      case "error":
+        console.error("[renderer] Server error:", data.error);
+        if (typeof updateStatus === 'function') {
+          updateStatus("error: " + data.error);
+        }
+        break;
     }
   }
 
   function populateCharacters(characters, activeId) {
     if (!charSelect) return;
     charSelect.innerHTML = "";
+
+    // Empty state: no active character and no visible characters in this profile
+    const anyVisible = characters.some(c => c.visible);
+    if (!activeId && !anyVisible) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "\u26a0 No characters available for this profile";
+      opt.disabled = true;
+      opt.selected = true;
+      charSelect.appendChild(opt);
+      return;
+    }
+
     for (const c of characters) {
       const opt = document.createElement("option");
       opt.value = c.id;
@@ -1664,15 +1695,18 @@
       });
       isPlaying = true;
       if (btnPlayPause) {
-        btnPlayPause.textContent = "â¸";
+        btnPlayPause.textContent = "⏸";
       }
 
       currentAudioElement.onended = () => {
         isPlaying = false;
         if (btnPlayPause) {
-          btnPlayPause.textContent = "â–¶";
+          btnPlayPause.textContent = "▶";
         }
         if (playbackTimer) { clearInterval(playbackTimer); playbackTimer = null; }
+        currentAudioElement = null;
+        wavBytes = null;
+        wavDuration = 0;
       };
 
       if (playbackTimer) clearInterval(playbackTimer);
@@ -1701,11 +1735,17 @@
     }
 
     source.onended = () => {
+      try { source.disconnect(); } catch (_) { /* already disconnected */ }
+      source.buffer = null;
       isPlaying = false;
       if (btnPlayPause) {
         btnPlayPause.textContent = "▶";
       }
       if (playbackTimer) { clearInterval(playbackTimer); playbackTimer = null; }
+      currentSource = null;
+      currentBuffer = null;
+      wavBytes = null;
+      wavDuration = 0;
     };
 
     if (playbackTimer) clearInterval(playbackTimer);
@@ -1732,6 +1772,9 @@
     isPlaying = false;
     if (btnPlayPause) btnPlayPause.textContent = "▶";
     if (playbackTimer) { clearInterval(playbackTimer); playbackTimer = null; }
+    currentBuffer = null;
+    wavBytes = null;
+    wavDuration = 0;
   }
 
   // ─── Waveform ────────────────────────────────────────────
@@ -1818,6 +1861,9 @@
         statusDot.classList.add("thinking");
         if (brandLabel) brandLabel.classList.add("state-thinking");
         break;
+      case "warning":
+        statusDot.classList.add("warning");
+        break;
     }
   }
 
@@ -1863,6 +1909,25 @@
     }
     if (CHARACTER_CODEC_FREQUENCIES.default) {
       freqDisplay.textContent = CHARACTER_CODEC_FREQUENCIES.default;
+    }
+  }
+
+  function updateProfileBadge(profileName) {
+    if (!profileBadge) return;
+    if (!profileName || profileName === 'default' || profileName === 'global' || profileName === '') {
+      profileBadge.style.display = 'none';
+      return;
+    }
+    if (profileBadge.textContent !== profileName) {
+      profileBadge.textContent = profileName;
+      profileBadge.style.display = '';
+      // Trigger highlight animation
+      profileBadge.classList.remove('highlight');
+      // Force reflow so the animation re-triggers on rapid switches
+      void profileBadge.offsetWidth;
+      profileBadge.classList.add('highlight');
+    } else {
+      profileBadge.style.display = '';
     }
   }
 
@@ -2671,9 +2736,15 @@
 
   // Hook into character switch to trigger burst
   const origHandleEvent = handleEvent;
+  let _lastBurstTime = 0;
   handleEvent = function(data) {
     if (data.type === "character_switched") {
-      triggerBurst();
+      // Only burst on user-initiated switches, with 3-second cooldown
+      const now = Date.now();
+      if (data.initiator === "user" && now - _lastBurstTime > 3000) {
+        _lastBurstTime = now;
+        triggerBurst();
+      }
     }
     origHandleEvent(data);
   };

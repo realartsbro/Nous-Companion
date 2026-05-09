@@ -52,6 +52,7 @@ from hermes_runtime import (
 )
 from server.hermes_observer import HermesObserver
 from server.hermes_observer import EVENT_THINKING, EVENT_COMPLETE, EVENT_TOOL_USE, EVENT_SESSION_SWITCHED, EVENT_SESSION_ENDED
+from server.recorder import CompanionRecorder
 from server.scene_player import ScenePlayer
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,22 @@ logger = logging.getLogger(__name__)
 
 class CompanionServer:
     """WebSocket server with audio-reactive animation and LLM brain."""
+
+    # ── Dependency Registry ─────────────────────────────────────────────
+    # Maps import-name → (pip_package, category, feature_description)
+    # category: "REQUIRED" = crash if missing, "OPTIONAL" = warn but continue
+    _DEPENDENCY_REGISTRY: list[tuple[str, str, str, str]] = [
+        # (import_name,     pip_name,           category,     feature_description)
+        ("numpy",           "numpy",            "REQUIRED",   "audio analysis & compositor"),
+        ("soundfile",       "soundfile",        "REQUIRED",   "WAV audio decoding"),
+        ("websockets",      "websockets",       "REQUIRED",   "WebSocket server transport"),
+        ("PIL",             "Pillow",           "REQUIRED",   "character sprite rendering"),
+        ("aiohttp",         "aiohttp",          "REQUIRED",   "LLM API & Hermes connectivity"),
+        ("yaml",            "PyYAML",           "REQUIRED",   "Hermes config & character manifests"),
+        ("edge_tts",        "edge-tts",         "OPTIONAL",   "Edge-TTS fallback voice"),
+        ("gradio_client",   "gradio_client",    "OPTIONAL",   "OmniVoice voice cloning TTS"),
+        ("sqlite3",         "sqlite3 (stdlib)",  "OPTIONAL",   "Hermes session tracking"),
+    ]
 
     def __init__(
         self,
@@ -78,6 +95,9 @@ class CompanionServer:
         self._active_profile: Optional[str] = None
         self._active_profile = self._detect_active_profile()
         logger.info(f"Active profile detected: {self._active_profile!r}")
+
+        # Per-profile active character memory (in-memory)
+        self._profile_characters: dict[str, str] = {}
 
         # Debug log file — captures [CMD], [ANIMATION], [BROADCAST] output
         # that is invisible when the backend runs inside the Tauri app.
@@ -103,8 +123,11 @@ class CompanionServer:
         # Load compositor from active character
         self.compositor = self.char_manager.active.compositor if self.char_manager.active else None
 
-        # Create animation controller
-        self.anim = AnimationController(self.compositor, fps=fps)
+        # Create animation controller (only if we have a compositor)
+        if self.compositor:
+            self.anim = AnimationController(self.compositor, fps=fps)
+        else:
+            self.anim = None
 
         # Connected renderers
         self._clients: set = set()
@@ -140,6 +163,7 @@ class CompanionServer:
         memory_text = self._load_user_memory()
         if memory_text:
             self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
+        self._brain_prompt += f"\n\nThe current active Hermes profile is: {self._active_profile}."
 
         # Default: route through hermes's API server
         self._llm_config = {
@@ -167,6 +191,9 @@ class CompanionServer:
         }
         self._apply_omnivoice_url()
 
+        # Fallback notification cooldown
+        self._last_fallback_notify_at: float = 0.0
+
         bootstrap_prefs = self._read_prefs()
         self._load_prefs(bootstrap_prefs)
 
@@ -189,6 +216,7 @@ class CompanionServer:
         self._tool_cooldown: float = 8.0
         self._session_watching: bool = True  # auto-follow latest session by default
         self._is_reacting: bool = False      # guard: don't react while already reacting
+        self._manual_profile_switch_time: float = 0.0  # cooldown for manual profile switches
         self._speech_accumulator: list[dict] = []  # events accumulated during speech, flushed on speech end
 
         # ─── Global TTS lock ─────────────────────────────────────────
@@ -197,10 +225,24 @@ class CompanionServer:
         self._tts_lock = asyncio.Lock()
         self._current_tts_task: Optional[asyncio.Task] = None
 
+        # ─── Character switch lock ───────────────────────────────────────
+        # Serializes ALL character switch operations to prevent races
+        # between concurrent WebSocket clients, save_character reloads,
+        # and observer auto-switches.  Resolves GAP-006, GAP-007, GAP-008.
+        self._switch_lock = asyncio.Lock()
+
+        # ─── Lock ordering (MUST be respected to avoid deadlocks) ─────
+        # _switch_lock (outer) → _tts_lock → _llm_lock (inner)
+        # - Never acquire _switch_lock while holding _tts_lock or _llm_lock
+        # - Never acquire _tts_lock while holding _llm_lock
+
         # ─── Scene player (scripted performances) ──────────────────
         # Plays .nous-scene.json files as timed performances with
         # pre-generated TTS audio, expression changes, and overlay events.
         self.scene_player = ScenePlayer(self)
+
+        # ─── Recorder (pluggable event recording) ──────────────────
+        self._recorder: Optional[CompanionRecorder] = None
 
         # ─── Smart reaction state ──────────────────────────────────────────
         # Tool-event clustering: buffer rapid-fire tools, react once at the pause
@@ -274,6 +316,7 @@ class CompanionServer:
             "colorize_enabled": False,      # WebGL shader recolor
             "colorize_color": "#ff0000",    # target tint color
             "colorize_strength": 1.0,       # 0.0–1.0 blend
+            "recording_enabled": False,      # master toggle for event recording
         }
         self._load_settings(bootstrap_prefs)
 
@@ -297,10 +340,16 @@ class CompanionServer:
         # Stores recent (context, quip) message pairs for LLM continuity
         self._quip_history: list[dict] = []
 
-        logger.info(
-            f"Server initialized: {len(self.compositor.expression_names)} expressions, "
-            f"{fps}fps"
-        )
+        if self.compositor:
+            logger.info(
+                f"Server initialized: {len(self.compositor.expression_names)} expressions, "
+                f"{fps}fps"
+            )
+        else:
+            logger.info(
+                f"Server initialized in degraded mode — no compositor "
+                f"(no characters with sprites found)"
+            )
         if self._diag_disable_frame_stream:
             logger.warning("Diagnostic mode: continuous renderer frame stream disabled")
         if self._diag_disable_all_renderer_frames:
@@ -487,6 +536,8 @@ class CompanionServer:
         self.observer.on_event(self._on_hermes_event)
         if not self._diag_disable_observer:
             await self.observer.start(poll_interval=1.0)
+            # Apply current profile filter (respects global characters)
+            self.observer.set_profile_filter(self._get_observer_profile_filter())
 
         return self._runtime_payload()
 
@@ -662,7 +713,6 @@ class CompanionServer:
             return
 
         audio_b64_str: Optional[str] = None
-        sends = []
         for client in clients:
             payload = {
                 "type": "audio",
@@ -676,20 +726,29 @@ class CompanionServer:
                 if audio_b64_str is None:
                     audio_b64_str = base64.b64encode(wav_bytes).decode()
                 payload["audio"] = audio_b64_str
-            sends.append(client.send(json.dumps(payload)))
 
-        results = await asyncio.gather(*sends, return_exceptions=True)
-        for client, result in zip(clients, results):
-            if isinstance(result, (websockets.ConnectionClosed, Exception)):
-                if not isinstance(result, websockets.ConnectionClosed):
-                    logger.warning("Audio broadcast failed for client %s: %s", client.remote_address, result)
-                self._drop_client(client)
+            message = json.dumps(payload)
+
+            # Route renderer clients through the frame sender queue
+            # (GAP-017: eliminates ordering race with character switch messages)
+            if client in renderer_clients:
+                self._queue_renderer_message_for_clients((client,), message)
+            else:
+                # Settings-control clients: send directly (they don't have frame senders)
+                try:
+                    await client.send(message)
+                except (websockets.ConnectionClosed, Exception) as exc:
+                    if not isinstance(exc, websockets.ConnectionClosed):
+                        logger.warning("Audio broadcast failed for settings-control %s: %s", client.remote_address, exc)
+                    self._drop_client(client)
 
     async def _send_current_frame_to_renderers(self, event_type: str = "frame"):
         """Push the current portrait immediately to renderer clients."""
         if self._diag_disable_all_renderer_frames:
             return
         if not self._clients_for_roles({"renderer"}):
+            return
+        if self.anim is None or self.compositor is None:
             return
         self._invalidate_frame_signature()
         t0 = time.perf_counter()
@@ -1083,6 +1142,28 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             print(f"[BRAIN-RESULT] quip=\"{quip_text}\" expression={expr}", flush=True)
             # Record in quip history for future continuity
             self._record_quip(context, quip_text)
+
+            # ── Record full context snapshot (prompt + response) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_context_snapshot(
+                        trigger_quip_seq=self._reaction_seq_counter,
+                        reaction_kind=reaction_kind,
+                        brain_system_prompt=system,
+                        user_prompt=context,
+                        quip_history_at_time=list(self._quip_history),
+                        recent_comment_context=continuity or "",
+                        llm_messages_sent=messages,
+                        model_used=selected_model,
+                        provider_used="fast" if fast_cfg else "hermes-api",
+                        godmode_enabled=self._godmode,
+                        temperature=0.7,
+                        max_tokens=150,
+                        raw_llm_response=content or "",
+                    )
+                except Exception:
+                    pass  # recording is best-effort; never crash on recorder error
+
             return {"quip": quip_text, "expression": expr}
 
         except Exception as e:
@@ -1107,6 +1188,21 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             if result:
                 return result
             print("[TTS] OmniVoice unavailable, falling back to edge-tts", flush=True)
+            # Try edge-tts fallback and notify on success (with cooldown)
+            edge_result = await self._tts_edge(text)
+            if edge_result:
+                FALLBACK_NOTIFY_COOLDOWN = 300.0  # 5 minutes
+                if time.time() - self._last_fallback_notify_at > FALLBACK_NOTIFY_COOLDOWN:
+                    self._last_fallback_notify_at = time.time()
+                    await self._broadcast(json.dumps({
+                        "type": "overlay",
+                        "message": "Voice synthesis unavailable — using system voice"
+                    }), roles={"renderer"})
+                    await self._broadcast(json.dumps({
+                        "type": "status",
+                        "status": "fallback_tts"
+                    }), roles={"renderer"})
+            return edge_result
 
         return await self._tts_edge(text)
 
@@ -1361,6 +1457,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 memory_text = self._load_user_memory()
                 if memory_text:
                     self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
+                self._brain_prompt += f"\n\nThe current active Hermes profile is: {self._active_profile}."
                 if char.voice_ref_audio:
                     self._tts_config["ref_audio"] = char.voice_ref_audio
                 self.anim.mouth_open_threshold = char.mouth_open_threshold
@@ -1387,6 +1484,19 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
         except Exception:
             pass
 
+    def _get_observer_profile_filter(self) -> Optional[str]:
+        """Return the profile filter value for the observer.
+
+        Global characters (empty hermes_profiles) should see all profiles,
+        so return None (disable filtering).
+        Profile-bound characters should only see their own profile's sessions.
+        """
+        active = self.char_manager.active
+        if active and not active.hermes_profiles:
+            # Global character — observe all profiles
+            return None
+        return self._active_profile
+
     def _sync_runtime_to_active_character(self, reset_animation: bool = False):
         """Apply the active character's runtime state to the server."""
         active_char = self.char_manager.active
@@ -1394,11 +1504,15 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             return
 
         self.compositor = active_char.compositor
-        self.anim.compositor = self.compositor
+        if self.anim is not None:
+            self.anim.compositor = self.compositor
 
         if reset_animation:
-            self.anim.stop_audio()
-            self.anim.reset_state("normal", sprite_index=0)
+            if self.anim is not None:
+                self.anim.stop_audio()
+            self._is_speaking = False
+            if self.anim is not None:
+                self.anim.reset_state("normal", sprite_index=0)
             self._idle_timer = 0
             self._manual_expression_cooldown = 0
 
@@ -1406,6 +1520,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
         memory_text = self._load_user_memory()
         if memory_text:
             self._brain_prompt += f"\n\n---\nOperator context:\n{memory_text}\n---"
+        self._brain_prompt += f"\n\nThe current active Hermes profile is: {self._active_profile}."
         self._tts_config["engine"] = active_char.voice_engine
         self._tts_config["speed"] = active_char.voice_settings.get(
             "speed",
@@ -1414,20 +1529,47 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
         if active_char.voice_ref_audio:
             self._tts_config["ref_audio"] = active_char.voice_ref_audio
 
-        self.anim.mouth_open_threshold = active_char.mouth_open_threshold
-        self.anim.mouth_close_threshold = active_char.mouth_close_threshold
-        self.anim.flap_interval_ms = active_char.flap_interval_ms
+        if self.anim is not None:
+            self.anim.mouth_open_threshold = active_char.mouth_open_threshold
+            self.anim.mouth_close_threshold = active_char.mouth_close_threshold
+            self.anim.flap_interval_ms = active_char.flap_interval_ms
 
         if hasattr(self, "_ov_client"):
             self._ov_client = None
         if hasattr(self, "_ov_ref"):
             self._ov_ref = None
 
+        # Re-evaluate observer profile filter for the new character
+        if hasattr(self, 'observer') and self.observer:
+            self.observer.set_profile_filter(self._get_observer_profile_filter())
+
     async def _broadcast_character_catalog(self):
+        """Broadcast enriched character list with profile awareness."""
+        active_profile = self._active_profile or self._detect_active_profile()
+        all_chars = self.char_manager.character_list
+        enriched = []
+        for item in all_chars:
+            item = dict(item)  # shallow copy
+            cid = item["id"]
+            char = self.char_manager.characters.get(cid)
+            item["visible"] = cid in {
+                cid2 for cid2, c in self.char_manager.characters.items()
+                if not c.hermes_profiles or active_profile in c.hermes_profiles
+            }
+            item["bound_profile"] = char.hermes_profile if char else None
+            if char and char.hermes_profiles and active_profile not in char.hermes_profiles:
+                item["mismatch_profile"] = char.hermes_profiles
+            enriched.append(item)
+
+        # Determine if active character is visible; if not, signal null to frontend
+        visible = self.char_manager.get_visible_characters(active_profile)
+        active_id_to_send = self.char_manager.active_id if self.char_manager.active_id in visible else None
+
         await self._broadcast(json.dumps({
             "type": "characters",
-            "characters": self.char_manager.character_list,
-            "active": self.char_manager.active_id,
+            "active_profile": active_profile,
+            "characters": enriched,
+            "active": active_id_to_send,
         }))
 
     async def _broadcast_active_character_state(self, request_id: Optional[str] = None):
@@ -1437,6 +1579,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
 
         char_payload = {
             "type": "character_switched",
+            "initiator": "system",
             "character": self.char_manager.active_id,
             "name": active_char.name,
             "display_mode": active_char.display_mode,
@@ -1456,6 +1599,24 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 "expressions": self.compositor.get_display_expressions(),
                 "server_sent_at_ms": int(time.time() * 1000),
             }))
+
+    async def _check_and_signal_empty_profile(self):
+        """If the active profile has zero visible characters, broadcast null character
+        so the frontend can show a graceful empty state."""
+        active_profile = self._active_profile or self._detect_active_profile()
+        if not active_profile:
+            return
+        visible = self.char_manager.get_visible_characters(active_profile)
+        if not visible:
+            logger.warning(
+                f"Active profile '{active_profile}' has zero visible characters. "
+                "Broadcasting null active_character."
+            )
+            await self._broadcast(json.dumps({
+                "type": "profile_changed",
+                "profile": active_profile,
+                "active_character": None,
+            }), roles={"control", "renderer"})
 
     def _load_settings(self, prefs: Optional[dict] = None):
         """Load user settings from prefs file."""
@@ -2049,11 +2210,14 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             fw = self.compositor.frame_size[0] if self.compositor else 0
             fh = self.compositor.frame_size[1] if self.compositor else 0
 
+            # Determine if active character is visible; if not, signal null to frontend
+            active_id_to_send = self.char_manager.active_id if self.char_manager.active_id in visible_ids else None
+
             await self._broadcast(json.dumps({
                 "type": "characters",
                 "active_profile": active_profile,
                 "characters": enriched,
-                "active": self.char_manager.active_id,
+                "active": active_id_to_send,
                 "frame_width": fw,
                 "frame_height": fh,
             }))
@@ -2079,169 +2243,180 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 return  # BLOCK the switch
 
             t_switch = time.perf_counter()
-            if self.char_manager.switch(char_id):
-                t_after_switch = time.perf_counter()
-                self._persist_active_character_pref(char_id)
-                self._sync_runtime_to_active_character(reset_animation=True)
-                self._quip_history.clear()
-                print(f"[BRAIN] Character switched to '{char_id}' — quip history cleared", flush=True)
-                char = self.char_manager.active
-                self.anim.mouth_open_threshold = char.mouth_open_threshold
-                self.anim.mouth_close_threshold = char.mouth_close_threshold
-                char_switched_payload = {
-                    "type": "character_switched",
-                    "character": char_id,
-                    "name": self.char_manager.active.name,
-                    "display_mode": self.char_manager.active.display_mode,
-                    "request_id": request_id,
-                }
-                if self.compositor:
-                    fw, fh = self.compositor.frame_size
-                    char_switched_payload["frame_width"] = fw
-                    char_switched_payload["frame_height"] = fh
-                expressions_payload = None
-                if self.compositor:
-                    expressions = self.compositor.get_display_expressions()
-                    expressions_payload = {
-                        "type": "expressions",
-                        "expressions": expressions,
+            async with self._switch_lock:
+                if self.char_manager.switch(char_id):
+                    t_after_switch = time.perf_counter()
+                    self._persist_active_character_pref(char_id)
+                    # Cancel any in-progress TTS — clean cut before switching compositor
+                    if self._current_tts_task and not self._current_tts_task.done():
+                        print("[TTS] Cancelling current speech (manual character switch)", flush=True)
+                        self._current_tts_task.cancel()
+                        self._current_tts_task = None
+                    self._sync_runtime_to_active_character(reset_animation=True)
+                    # Remember this character for the current profile
+                    if self._active_profile:
+                        self._profile_characters[self._active_profile] = char_id
+                    await self._broadcast(json.dumps({"type": "audio_stop"}), roles={"renderer"})
+                    self._quip_history.clear()
+                    print(f"[BRAIN] Character switched to '{char_id}' — quip history cleared", flush=True)
+                    char = self.char_manager.active
+                    self.anim.mouth_open_threshold = char.mouth_open_threshold
+                    self.anim.mouth_close_threshold = char.mouth_close_threshold
+                    char_switched_payload = {
+                        "type": "character_switched",
+                        "initiator": "user",
+                        "character": char_id,
+                        "name": self.char_manager.active.name,
+                        "display_mode": self.char_manager.active.display_mode,
+                        "request_id": request_id,
                     }
-                t_before_renderer_broadcast = time.perf_counter()
-                control_char_metrics = []
-                control_expr_metrics = []
-                control_clients = self._clients_for_roles({"control"})
+                    if self.compositor:
+                        fw, fh = self.compositor.frame_size
+                        char_switched_payload["frame_width"] = fw
+                        char_switched_payload["frame_height"] = fh
+                    expressions_payload = None
+                    if self.compositor:
+                        expressions = self.compositor.get_display_expressions()
+                        expressions_payload = {
+                            "type": "expressions",
+                            "expressions": expressions,
+                        }
+                    t_before_renderer_broadcast = time.perf_counter()
+                    control_char_metrics = []
+                    control_expr_metrics = []
+                    control_clients = self._clients_for_roles({"control"})
 
-                async def _send_control_payload(client, payload):
-                    message = json.dumps({
-                        **payload,
-                        "server_sent_at_ms": int(time.time() * 1000),
-                    })
-                    started = time.perf_counter()
-                    try:
-                        await client.send(message)
-                        return (client, (time.perf_counter() - started) * 1000, None)
-                    except Exception as exc:
-                        return (client, None, exc)
+                    async def _send_control_payload(client, payload):
+                        message = json.dumps({
+                            **payload,
+                            "server_sent_at_ms": int(time.time() * 1000),
+                        })
+                        started = time.perf_counter()
+                        try:
+                            await client.send(message)
+                            return (client, (time.perf_counter() - started) * 1000, None)
+                        except Exception as exc:
+                            return (client, None, exc)
 
-                if self._diag_switch_control_first:
-                    if control_clients:
-                        results = await asyncio.gather(*(
-                            _send_control_payload(client, char_switched_payload)
-                            for client in control_clients
-                        ))
-                        disconnected = set()
-                        for client, send_ms, exc in results:
-                            if exc is None and send_ms is not None:
-                                control_char_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
-                            else:
-                                control_char_metrics.append(f"{self._client_tag(client)}:ERR")
-                                disconnected.add(client)
-                        for client in disconnected:
-                            self._drop_client(client)
-                    t_after_control_char = time.perf_counter()
+                    if self._diag_switch_control_first:
+                        if control_clients:
+                            results = await asyncio.gather(*(
+                                _send_control_payload(client, char_switched_payload)
+                                for client in control_clients
+                            ))
+                            disconnected = set()
+                            for client, send_ms, exc in results:
+                                if exc is None and send_ms is not None:
+                                    control_char_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
+                                else:
+                                    control_char_metrics.append(f"{self._client_tag(client)}:ERR")
+                                    disconnected.add(client)
+                            for client in disconnected:
+                                self._drop_client(client)
+                        t_after_control_char = time.perf_counter()
 
-                    if control_clients and expressions_payload:
-                        results = await asyncio.gather(*(
-                            _send_control_payload(client, expressions_payload)
-                            for client in control_clients
-                        ))
-                        disconnected = set()
-                        for client, send_ms, exc in results:
-                            if exc is None and send_ms is not None:
-                                control_expr_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
-                            else:
-                                control_expr_metrics.append(f"{self._client_tag(client)}:ERR")
-                                disconnected.add(client)
-                        for client in disconnected:
-                            self._drop_client(client)
-                    t_after_control_expr = time.perf_counter()
+                        if control_clients and expressions_payload:
+                            results = await asyncio.gather(*(
+                                _send_control_payload(client, expressions_payload)
+                                for client in control_clients
+                            ))
+                            disconnected = set()
+                            for client, send_ms, exc in results:
+                                if exc is None and send_ms is not None:
+                                    control_expr_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
+                                else:
+                                    control_expr_metrics.append(f"{self._client_tag(client)}:ERR")
+                                    disconnected.add(client)
+                            for client in disconnected:
+                                self._drop_client(client)
+                        t_after_control_expr = time.perf_counter()
 
-                    await self._broadcast(json.dumps({
-                        **char_switched_payload,
-                        "server_sent_at_ms": int(time.time() * 1000),
-                    }), roles={"renderer"})
-                    t_after_renderer_broadcast = time.perf_counter()
-                    await self._send_current_frame_to_renderers()
-                    t_after_frame_push = time.perf_counter()
-                    if expressions_payload:
                         await self._broadcast(json.dumps({
-                            **expressions_payload,
+                            **char_switched_payload,
                             "server_sent_at_ms": int(time.time() * 1000),
                         }), roles={"renderer"})
-                    t_after_renderer_expr = time.perf_counter()
-                else:
-                    await self._broadcast(json.dumps({
-                        **char_switched_payload,
-                        "server_sent_at_ms": int(time.time() * 1000),
-                    }), roles={"renderer"})
-                    t_after_renderer_broadcast = time.perf_counter()
-                    await self._send_current_frame_to_renderers()
-                    t_after_frame_push = time.perf_counter()
-                    if expressions_payload:
+                        t_after_renderer_broadcast = time.perf_counter()
+                        await self._send_current_frame_to_renderers()
+                        t_after_frame_push = time.perf_counter()
+                        if expressions_payload:
+                            await self._broadcast(json.dumps({
+                                **expressions_payload,
+                                "server_sent_at_ms": int(time.time() * 1000),
+                            }), roles={"renderer"})
+                        t_after_renderer_expr = time.perf_counter()
+                    else:
                         await self._broadcast(json.dumps({
-                            **expressions_payload,
+                            **char_switched_payload,
                             "server_sent_at_ms": int(time.time() * 1000),
                         }), roles={"renderer"})
-                    t_after_renderer_expr = time.perf_counter()
+                        t_after_renderer_broadcast = time.perf_counter()
+                        await self._send_current_frame_to_renderers()
+                        t_after_frame_push = time.perf_counter()
+                        if expressions_payload:
+                            await self._broadcast(json.dumps({
+                                **expressions_payload,
+                                "server_sent_at_ms": int(time.time() * 1000),
+                            }), roles={"renderer"})
+                        t_after_renderer_expr = time.perf_counter()
 
-                    if control_clients:
-                        results = await asyncio.gather(*(
-                            _send_control_payload(client, char_switched_payload)
-                            for client in control_clients
-                        ))
-                        disconnected = set()
-                        for client, send_ms, exc in results:
-                            if exc is None and send_ms is not None:
-                                control_char_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
-                            else:
-                                control_char_metrics.append(f"{self._client_tag(client)}:ERR")
-                                disconnected.add(client)
-                        for client in disconnected:
-                            self._drop_client(client)
-                    t_after_control_char = time.perf_counter()
+                        if control_clients:
+                            results = await asyncio.gather(*(
+                                _send_control_payload(client, char_switched_payload)
+                                for client in control_clients
+                            ))
+                            disconnected = set()
+                            for client, send_ms, exc in results:
+                                if exc is None and send_ms is not None:
+                                    control_char_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
+                                else:
+                                    control_char_metrics.append(f"{self._client_tag(client)}:ERR")
+                                    disconnected.add(client)
+                            for client in disconnected:
+                                self._drop_client(client)
+                        t_after_control_char = time.perf_counter()
 
-                    if control_clients and expressions_payload:
-                        results = await asyncio.gather(*(
-                            _send_control_payload(client, expressions_payload)
-                            for client in control_clients
-                        ))
-                        disconnected = set()
-                        for client, send_ms, exc in results:
-                            if exc is None and send_ms is not None:
-                                control_expr_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
-                            else:
-                                control_expr_metrics.append(f"{self._client_tag(client)}:ERR")
-                                disconnected.add(client)
-                        for client in disconnected:
-                            self._drop_client(client)
-                    t_after_control_expr = time.perf_counter()
-                switch_ms = (time.perf_counter() - t_switch) * 1000
-                if switch_ms > 25:
-                    renderer_busy = []
-                    for client in self._clients_for_roles({"renderer"}):
-                        state = self._frame_sender_state.get(client)
-                        if not state:
-                            continue
-                        renderer_busy.append(
-                            f"{state['kind']}:{len(self._pending_renderer_messages.get(client, ()))}/"
-                            f"{1 if client in self._pending_frame_messages else 0}/"
-                            f"{(time.perf_counter() - state['started_at']) * 1000:.1f}ms/"
-                            f"{state['chars']}ch"
+                        if control_clients and expressions_payload:
+                            results = await asyncio.gather(*(
+                                _send_control_payload(client, expressions_payload)
+                                for client in control_clients
+                            ))
+                            disconnected = set()
+                            for client, send_ms, exc in results:
+                                if exc is None and send_ms is not None:
+                                    control_expr_metrics.append(f"{self._client_tag(client)}:{send_ms:.1f}ms")
+                                else:
+                                    control_expr_metrics.append(f"{self._client_tag(client)}:ERR")
+                                    disconnected.add(client)
+                            for client in disconnected:
+                                self._drop_client(client)
+                        t_after_control_expr = time.perf_counter()
+                    switch_ms = (time.perf_counter() - t_switch) * 1000
+                    if switch_ms > 25:
+                        renderer_busy = []
+                        for client in self._clients_for_roles({"renderer"}):
+                            state = self._frame_sender_state.get(client)
+                            if not state:
+                                continue
+                            renderer_busy.append(
+                                f"{state['kind']}:{len(self._pending_renderer_messages.get(client, ()))}/"
+                                f"{1 if client in self._pending_frame_messages else 0}/"
+                                f"{(time.perf_counter() - state['started_at']) * 1000:.1f}ms/"
+                                f"{state['chars']}ch"
+                            )
+                        print(
+                            f"[PERF][server_switch] character={char_id} request_id={request_id} "
+                            f"switch_ms={(t_after_switch - t_switch)*1000:.1f} "
+                            f"renderer_char_ms={(t_after_renderer_broadcast - t_before_renderer_broadcast)*1000:.1f} "
+                            f"frame_push_ms={(t_after_frame_push - t_after_renderer_broadcast)*1000:.1f} "
+                            f"renderer_expr_ms={(t_after_renderer_expr - t_after_frame_push)*1000:.1f} "
+                            f"control_char_ms={(t_after_control_char - t_after_renderer_expr)*1000:.1f} "
+                            f"control_expr_ms={(t_after_control_expr - t_after_control_char)*1000:.1f} "
+                            f"control_char_clients={control_char_metrics or ['none']} "
+                            f"control_expr_clients={control_expr_metrics or ['none']} "
+                            f"renderer_busy={renderer_busy or ['idle']} "
+                            f"total_ms={switch_ms:.1f}",
+                            flush=True,
                         )
-                    print(
-                        f"[PERF][server_switch] character={char_id} request_id={request_id} "
-                        f"switch_ms={(t_after_switch - t_switch)*1000:.1f} "
-                        f"renderer_char_ms={(t_after_renderer_broadcast - t_before_renderer_broadcast)*1000:.1f} "
-                        f"frame_push_ms={(t_after_frame_push - t_after_renderer_broadcast)*1000:.1f} "
-                        f"renderer_expr_ms={(t_after_renderer_expr - t_after_frame_push)*1000:.1f} "
-                        f"control_char_ms={(t_after_control_char - t_after_renderer_expr)*1000:.1f} "
-                        f"control_expr_ms={(t_after_control_expr - t_after_control_char)*1000:.1f} "
-                        f"control_char_clients={control_char_metrics or ['none']} "
-                        f"control_expr_clients={control_expr_metrics or ['none']} "
-                        f"renderer_busy={renderer_busy or ['idle']} "
-                        f"total_ms={switch_ms:.1f}",
-                        flush=True,
-                    )
 
         elif cmd == "set_expression":
             expression = data.get("expression", "normal")
@@ -2291,11 +2466,15 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                         audio_b64_str,
                         self.anim._audio.duration_s if self.anim._audio else None,
                     )
-                    await self._broadcast_audio_to_renderers(
-                        wav_bytes,
-                        duration_s=self.anim._audio.duration_s if self.anim._audio else None,
-                        audio_path=wav_path,
-                    )
+                    self._suppress_frames = True
+                    try:
+                        await self._broadcast_audio_to_renderers(
+                            wav_bytes,
+                            duration_s=self.anim._audio.duration_s if self.anim._audio else None,
+                            audio_path=wav_path,
+                        )
+                    finally:
+                        self._suppress_frames = False
                     print(f"[CMD] Audio sent to renderer ({len(wav_bytes)} byte WAV)", flush=True)
                 except Exception as e:
                     print(f"[CMD] Audio error: {e}", flush=True)
@@ -2579,6 +2758,20 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     "type": "settings",
                     "settings": self.settings,
                 }))
+                # ── Recording toggle ─────────────────────────────────
+                if key == "recording_enabled":
+                    if value and not self._recorder:
+                        try:
+                            self._recorder = CompanionRecorder(self)
+                            self._recorder.start(reason="manual")
+                        except Exception as exc:
+                            logger.warning(f"Recorder start failed: {exc}")
+                    elif not value and self._recorder:
+                        try:
+                            self._recorder.stop(reason="manual")
+                            self._recorder = None
+                        except Exception:
+                            pass
 
         # ── Character Editor: get character data ────────────────────────────
         elif cmd == "get_character_data":
@@ -2603,20 +2796,28 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             print(f"[SAVE] Received sprite_order: {char_data.get('sprite_order', 'NOT PRESENT')}, sprite_files: {list(char_data.get('sprite_files', {}).keys())}, delete_sprites: {char_data.get('delete_sprites', 'NONE')}", flush=True)
             if char_id and self.char_manager.save_character(char_id, char_data):
                 # Reload the character so changes are live
-                self.char_manager._load_all()
-                if self.char_manager.active:
-                    self._persist_active_character_pref(char_id)
-                    self._sync_runtime_to_active_character(reset_animation=True)
-                    print(f"[TTS] Refreshed: engine={self._tts_config.get('engine')}, ref={self._tts_config.get('ref_audio')}", flush=True)
-                else:
-                    logger.warning(f"Character {char_id} not available after reload; server state unchanged")
-                await self._broadcast_character_catalog()
-                await self._broadcast_active_character_state()
-                await websocket.send(json.dumps({
-                    "type": "character_saved",
-                    "id": char_id,
-                    "ok": True,
-                }))
+                async with self._switch_lock:
+                    self.char_manager._load_all()
+                    if self.char_manager.active:
+                        self._persist_active_character_pref(char_id)
+                        # Cancel any in-progress TTS — clean cut before refreshing compositor
+                        if self._current_tts_task and not self._current_tts_task.done():
+                            print("[TTS] Cancelling current speech (save-as-new switch)", flush=True)
+                            self._current_tts_task.cancel()
+                            self._current_tts_task = None
+                        self._sync_runtime_to_active_character(reset_animation=True)
+                        await self._broadcast(json.dumps({"type": "audio_stop"}), roles={"renderer"})
+                        print(f"[TTS] Refreshed: engine={self._tts_config.get('engine')}, ref={self._tts_config.get('ref_audio')}", flush=True)
+                    else:
+                        logger.warning(f"Character {char_id} not available after reload; server state unchanged")
+                    await self._broadcast_character_catalog()
+                    await self._check_and_signal_empty_profile()
+                    await self._broadcast_active_character_state()
+                    await websocket.send(json.dumps({
+                        "type": "character_saved",
+                        "id": char_id,
+                        "ok": True,
+                    }))
                 print(f"[CMD] Character saved: {char_id}", flush=True)
             else:
                 await websocket.send(json.dumps({
@@ -2634,11 +2835,7 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 char_dir = self.char_manager.create_character(char_id, name)
                 if char_dir:
                     self.char_manager._load_all()
-                    await self._broadcast(json.dumps({
-                        "type": "characters",
-                        "characters": self.char_manager.character_list,
-                        "active": self.char_manager.active_id,
-                    }))
+                    await self._broadcast_character_catalog()
                     await websocket.send(json.dumps({
                         "type": "character_created",
                         "id": char_id,
@@ -2715,12 +2912,20 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             was_active = char_id == self.char_manager.active_id
             ok, error = self.char_manager.delete_character(char_id)
             if ok:
-                if was_active and self.char_manager.active_id:
-                    self._persist_active_character_pref(self.char_manager.active_id)
-                    self._sync_runtime_to_active_character(reset_animation=True)
-                await self._broadcast_character_catalog()
-                if was_active:
-                    await self._broadcast_active_character_state()
+                async with self._switch_lock:
+                    if was_active and self.char_manager.active_id:
+                        self._persist_active_character_pref(self.char_manager.active_id)
+                        # Cancel any in-progress TTS — clean cut before switching away from deleted char
+                        if self._current_tts_task and not self._current_tts_task.done():
+                            print("[TTS] Cancelling current speech (delete character switch)", flush=True)
+                            self._current_tts_task.cancel()
+                            self._current_tts_task = None
+                        self._sync_runtime_to_active_character(reset_animation=True)
+                    await self._broadcast(json.dumps({"type": "audio_stop"}), roles={"renderer"})
+                    await self._broadcast_character_catalog()
+                    await self._check_and_signal_empty_profile()
+                    if was_active:
+                        await self._broadcast_active_character_state()
                 await websocket.send(json.dumps({
                     "type": "character_deleted",
                     "ok": True,
@@ -2791,6 +2996,11 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 self._refresh_active_profile()
                 logger.info(f"Switched active profile to: {profile_name}")
 
+                # Record manual switch time so observer won't revert it
+                self._manual_profile_switch_time = time.time()
+                if hasattr(self, 'observer') and self.observer:
+                    self.observer.set_profile_filter(self._get_observer_profile_filter())
+
                 # After profile switch, auto-switch to a profile-appropriate character
                 visible = self.char_manager.get_visible_characters(profile_name)
                 if visible:
@@ -2799,10 +3009,46 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     elif "default" in visible:
                         new_char_id = "default"
                     else:
-                        new_char_id = next(iter(visible))
-                    self.char_manager.switch(new_char_id)
-                    self._sync_runtime_to_active_character(reset_animation=True)
-                    self._quip_history.clear()
+                        # Prefer remembered character for this profile
+                        remembered = self._profile_characters.get(profile_name)
+                        if remembered and remembered in visible:
+                            new_char_id = remembered
+                        else:
+                            new_char_id = next(iter(visible))
+                    async with self._switch_lock:
+                        self.char_manager.switch(new_char_id)
+                        # Cancel any in-progress TTS — clean cut before switching compositor
+                        if self._current_tts_task and not self._current_tts_task.done():
+                            print("[TTS] Cancelling current speech (profile auto-switch)", flush=True)
+                            self._current_tts_task.cancel()
+                            self._current_tts_task = None
+                        self._sync_runtime_to_active_character(reset_animation=True)
+                        await self._broadcast(json.dumps({"type": "audio_stop"}), roles={"renderer"})
+                        self._quip_history.clear()
+                        # Remember this character for the profile
+                        self._profile_characters[profile_name] = new_char_id
+                else:
+                    # Empty profile: no characters visible in this profile
+                    logger.warning(
+                        f"Profile '{profile_name}' has zero visible characters. "
+                        "Clearing active character for frontend."
+                    )
+                    # Broadcast profile switch result with null character
+                    await self._broadcast(json.dumps({
+                        "type": "profile_switch_result",
+                        "success": True,
+                        "profile": profile_name,
+                        "active_character": None,
+                        "warning": f"No characters are assigned to profile '{profile_name}'.",
+                    }))
+                    # Broadcast profile_changed with null so frontend shows empty state
+                    await self._broadcast(json.dumps({
+                        "type": "profile_changed",
+                        "profile": profile_name,
+                        "active_character": None,
+                    }), roles={"control", "renderer"})
+                    # Skip normal broadcasts — no character to broadcast state for
+                    return
 
                 await self._broadcast(json.dumps({
                     "type": "profile_switch_result",
@@ -2810,6 +3056,17 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     "profile": profile_name,
                     "active_character": self.char_manager.active_id,
                 }))
+
+                # Broadcast profile_changed so the frontend refreshes character/profile data
+                await self._broadcast(json.dumps({
+                    "type": "profile_changed",
+                    "profile": profile_name,
+                    "active_character": self.char_manager.active_id,
+                }), roles={"control", "renderer"})
+
+                # Broadcast character_switched so the frontend updates active character
+                await self._broadcast_active_character_state()
+
             except Exception as e:
                 logger.error(f"Failed to switch profile: {e}")
                 await self._broadcast(json.dumps({
@@ -2874,6 +3131,20 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             elif event_type == EVENT_COMPLETE:
                 self.anim.set_expression("normal")
                 await self._broadcast(json.dumps({"type": "status", "status": "idle"}))
+            # ── Record suppressed reaction (Point 1: startup grace) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="startup_grace",
+                        reaction_kind="completion" if event_type == EVENT_COMPLETE else "tool",
+                        semantic=None,
+                        significance=None,
+                        trigger_event_seq=None,
+                        trigger_event_type=event_type,
+                        gate_details={"grace_remaining_s": round(self._startup_grace_period - (now - self._startup_time), 1)},
+                    )
+                except Exception:
+                    pass
             return
 
         # Always broadcast the raw event to the UI for status display
@@ -2902,30 +3173,87 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             elif event_type == EVENT_COMPLETE:
                 self.anim.set_expression("normal")
                 await self._broadcast(json.dumps({"type": "status", "status": "idle"}))
+            # ── Record suppressed reaction (Point 2: observer disabled / verbosity silent) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="observer_disabled" if not observer_enabled else "verbosity_silent",
+                        reaction_kind="tool",
+                        semantic=None,
+                        significance=context.get("significance"),
+                        trigger_event_seq=None,
+                        trigger_event_type=event_type,
+                        gate_details={
+                            "observer_enabled": observer_enabled,
+                            "verbosity": verbosity,
+                        },
+                    )
+                except Exception:
+                    pass
             return
 
         # ── Profile-change detection ────────────────────────────────
         # Re-detect active profile from observer event context
         event_profile = context.get("profile_name")
         if event_profile and event_profile != self._active_profile:
-            logger.info(f"Profile change from observer: "
-                        f"{self._active_profile!r} → {event_profile!r}")
-            self._active_profile = event_profile
+            # Cooldown guard: don't revert a manual switch immediately
+            MANUAL_SWITCH_COOLDOWN = 10.0
+            if time.time() - self._manual_profile_switch_time >= MANUAL_SWITCH_COOLDOWN:
+                logger.info(f"Profile change from observer: "
+                            f"{self._active_profile!r} → {event_profile!r}")
+                self._active_profile = event_profile
 
-            # Check if current character is still visible in new profile
-            visible = self.char_manager.get_visible_characters(event_profile)
-            if self.char_manager.active_id not in visible and visible:
-                new_id = "default" if "default" in visible else next(iter(visible))
-                logger.info(f"Auto-switching character for new profile: {new_id}")
-                self.char_manager.switch(new_id)
-                self._sync_runtime_to_active_character(reset_animation=True)
+                # Check if current character is still visible in new profile
+                visible = self.char_manager.get_visible_characters(event_profile)
+                if self.char_manager.active_id not in visible and visible:
+                    # Prefer remembered character for this profile
+                    remembered = self._profile_characters.get(event_profile)
+                    if remembered and remembered in visible:
+                        new_id = remembered
+                    elif "default" in visible:
+                        new_id = "default"
+                    else:
+                        new_id = next(iter(visible))
+                    logger.info(f"Auto-switching character for new profile: {new_id}")
+                    async with self._switch_lock:
+                        self.char_manager.switch(new_id)
+                        # Cancel any in-progress TTS — clean cut before switching compositor
+                        if self._current_tts_task and not self._current_tts_task.done():
+                            print("[TTS] Cancelling current speech (observer auto-switch)", flush=True)
+                            self._current_tts_task.cancel()
+                            self._current_tts_task = None
+                        self._sync_runtime_to_active_character(reset_animation=True)
+                        await self._broadcast(json.dumps({"type": "audio_stop"}), roles={"renderer"})
+                        self._quip_history.clear()
+                        # Remember this character for the profile
+                        self._profile_characters[event_profile] = new_id
+                        await self._broadcast(json.dumps({
+                            "type": "character_switched",
+                            "initiator": "auto",
+                            "character": new_id,
+                            "name": self.char_manager.active.name,
+                            "display_mode": self.char_manager.active.display_mode,
+                        }))
+                elif not visible:
+                    # Empty profile: zero visible characters
+                    logger.warning(
+                        f"Observer switched to profile '{event_profile}' which has "
+                        "zero visible characters. Broadcasting null character."
+                    )
+                    await self._broadcast(json.dumps({
+                        "type": "profile_changed",
+                        "profile": event_profile,
+                        "active_character": None,
+                    }), roles={"control", "renderer"})
 
-            # Broadcast profile change to UI
-            await self._broadcast(json.dumps({
-                "type": "profile_changed",
-                "profile": event_profile,
-                "active_character": self.char_manager.active_id,
-            }), roles={"control", "renderer"})
+                # Broadcast profile change to UI (only when there are visible characters;
+                # the empty-profile case is handled in the elif above)
+                if visible:
+                    await self._broadcast(json.dumps({
+                        "type": "profile_changed",
+                        "profile": event_profile,
+                        "active_character": self.char_manager.active_id,
+                    }), roles={"control", "renderer"})
 
         if event_type == EVENT_THINKING:
             # User sent a new query — react to the prompt
@@ -3009,6 +3337,24 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
             # ── Non-urgent tool reactions: respect _is_reacting guard ──
             if self._is_reacting:
                 print("[OBSERVER] _is_reacting is True, skipping non-urgent tool reaction", flush=True)
+                # ── Record suppressed reaction (Point 4: during_reaction) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="during_reaction",
+                            reaction_kind="tool",
+                            semantic=None,
+                            significance=significance,
+                            trigger_event_seq=None,
+                            trigger_event_type="tool_use",
+                            gate_details={
+                                "is_reacting": True,
+                                "approval_pending": approval_pending,
+                                "tools": tools,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
             # ── During speech: accumulate instead of reacting separately ──
@@ -3020,11 +3366,72 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                     "assistant_reasoning": assistant_reasoning,
                     "significance": significance,
                 })
+                # ── Record suppressed reaction (Point 5: during_speech) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="during_speech",
+                            reaction_kind="tool",
+                            semantic=None,
+                            significance=significance,
+                            trigger_event_seq=None,
+                            trigger_event_type="tool_use",
+                            gate_details={
+                                "is_speaking": True,
+                                "speech_accumulator_size": len(self._speech_accumulator),
+                                "tools": tools,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
             # ── Low significance: silence ──
             if significance < self._tool_min_significance:
                 print(f"[OBSERVER] Tool sig={significance} < threshold={self._tool_min_significance} → silence", flush=True)
+                # ── Record suppressed reaction (Point 6: low_significance) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="low_significance",
+                            reaction_kind="tool",
+                            semantic=None,
+                            significance=significance,
+                            trigger_event_seq=None,
+                            trigger_event_type="tool_use",
+                            gate_details={
+                                "significance": significance,
+                                "tool_min_significance": self._tool_min_significance,
+                                "tools": tools,
+                            },
+                        )
+                    except Exception:
+                        pass
+                return
+
+            # ── should_chime_in gate: only occasionally react to non-urgent events ──
+            if not self.char_manager.should_chime_in(
+                self.char_manager.active_id,
+                f"tool use: {', '.join(tools) if tools else 'unknown'}"
+            ):
+                print("[OBSERVER] should_chime_in skipped non-urgent tool reaction", flush=True)
+                # ── Record suppressed reaction (Point 7: chime_in_gate) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="chime_in_gate",
+                            reaction_kind="tool",
+                            semantic=None,
+                            significance=significance,
+                            trigger_event_seq=None,
+                            trigger_event_type="tool_use",
+                            gate_details={
+                                "tools": tools,
+                                "character_id": self.char_manager.active_id,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
             # ── Buffer for clustering ──
@@ -3078,6 +3485,24 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 cooldown = float(self.settings.get("react_cooldown", 15))
                 if now - self._last_any_react_time < cooldown:
                     print(f"[OBSERVER] Completion cooldown ({cooldown}s) → skipping", flush=True)
+                    # ── Record suppressed reaction (Point 11: completion cooldown) ──
+                    if self._recorder and self._recorder._recording:
+                        try:
+                            self._recorder.record_reaction_suppressed(
+                                suppression_reason="cooldown",
+                                reaction_kind="completion",
+                                semantic="completion",
+                                significance=None,
+                                trigger_event_seq=None,
+                                trigger_event_type="complete",
+                                gate_details={
+                                    "cooldown_remaining_ms": int((cooldown - (now - self._last_any_react_time)) * 1000),
+                                    "cooldown_s": cooldown,
+                                    "last_any_react_time": self._last_any_react_time,
+                                },
+                            )
+                        except Exception:
+                            pass
                     return
             self._prompt_reacted_this_turn = False   # clear for next turn
             self._last_any_react_time = now
@@ -3085,6 +3510,23 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
 
             response = context.get("response", "")
             if not response or len(response) < 10:
+                # ── Record suppressed reaction (Point 16: response_too_short) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="response_too_short",
+                            reaction_kind="completion",
+                            semantic="completion",
+                            significance=None,
+                            trigger_event_seq=None,
+                            trigger_event_type="complete",
+                            gate_details={
+                                "response_length": len(response) if response else 0,
+                                "min_length": 10,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
             if verbosity == "brief":
@@ -3114,6 +3556,24 @@ Format: {{"quip": "your specific reaction here", "expression": "expression_name"
                 print(f"[OBSERVER] Skipping duplicate reaction (hash={trigger_hash})", flush=True)
                 # Still start idle timer — response delivered even if reaction is dupe
                 self._start_idle_timer()
+                # ── Record suppressed reaction (Point 12: duplicate_reaction) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="duplicate_reaction",
+                            reaction_kind="completion",
+                            semantic="completion",
+                            significance=None,
+                            trigger_event_seq=None,
+                            trigger_event_type="complete",
+                            gate_details={
+                                "trigger_hash": trigger_hash,
+                                "recent_reaction_count": len(self._recent_reactions),
+                                "react_dedup_window": self._react_dedup_window,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
             ctx_text = self._format_session_context(session_ctx, response, tool_chain)
@@ -3556,6 +4016,23 @@ CRITICAL: If you only READ or SEARCHED a file, do NOT claim you edited, modified
         quip_expr = quip.get("expression", "normal")
         if self._is_redundant_with_recent_comments(quip_text, semantic="completion"):
             print(f"[OBSERVER] Skipping repetitive completion quip: \"{quip_text}\"", flush=True)
+            # ── Record suppressed reaction (Point 13: redundant_comment) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="redundant_comment",
+                        reaction_kind="completion",
+                        semantic="completion",
+                        significance=None,
+                        trigger_event_seq=None,
+                        trigger_event_type="complete",
+                        gate_details={
+                            "quip_text": quip_text[:80],
+                            "recent_comment_count": len(self._recent_comment_history),
+                        },
+                    )
+                except Exception:
+                    pass
             return
         print(f"[OBSERVER] Speaking quip: \"{quip_text}\"", flush=True)
 
@@ -3585,12 +4062,46 @@ CRITICAL: If you only READ or SEARCHED a file, do NOT claim you edited, modified
         try:
             await asyncio.sleep(delay)
         except asyncio.CancelledError:
+            # ── Record suppressed reaction (Point 8a: cluster cancelled by superseding event) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="cluster_cancelled",
+                        reaction_kind="tool",
+                        semantic=None,
+                        significance=None,
+                        trigger_event_seq=None,
+                        trigger_event_type="tool_use",
+                        gate_details={
+                            "cluster_buffer_size": len(self._tool_cluster_buffer),
+                            "cause": "superseded_by_newer_event",
+                        },
+                    )
+                except Exception:
+                    pass
             return  # cancelled by COMPLETE or new tool arrival
         # After sleep, verify we're still the active flush task.
         # If COMPLETE arrived and cancelled us, or a new turn started,
         # self._tool_cluster_task will be None or a different task.
         if self._tool_cluster_task is not asyncio.current_task():
             print("[OBSERVER] Cluster flush task superseded → aborting stale flush", flush=True)
+            # ── Record suppressed reaction (Point 8b: cluster cancelled — stale flush task) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="cluster_cancelled",
+                        reaction_kind="tool",
+                        semantic=None,
+                        significance=None,
+                        trigger_event_seq=None,
+                        trigger_event_type="tool_use",
+                        gate_details={
+                            "cluster_buffer_size": len(self._tool_cluster_buffer),
+                            "cause": "stale_flush_task",
+                        },
+                    )
+                except Exception:
+                    pass
             return
         await self._flush_tool_cluster()
 
@@ -3628,6 +4139,26 @@ CRITICAL: If you only READ or SEARCHED a file, do NOT claim you edited, modified
         if semantic and semantic == self._last_reaction_semantic:
             if now - self._last_semantic_time < self._semantic_cooldown:
                 print(f"[OBSERVER] Semantic dedup: '{semantic}' too recent → silence", flush=True)
+                # ── Record suppressed reaction (Point 10: semantic_dedup) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="semantic_dedup",
+                            reaction_kind="tool",
+                            semantic=semantic,
+                            significance=max_significance,
+                            trigger_event_seq=None,
+                            trigger_event_type="tool_use",
+                            gate_details={
+                                "last_reaction_semantic": self._last_reaction_semantic,
+                                "semantic_cooldown_active": True,
+                                "semantic_cooldown_remaining_ms": int((self._semantic_cooldown - (now - self._last_semantic_time)) * 1000),
+                                "semantic_cooldown_s": self._semantic_cooldown,
+                                "tools": all_tools,
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
 
         # Also guard with cooldown between tool reactions.
@@ -3636,6 +4167,26 @@ CRITICAL: If you only READ or SEARCHED a file, do NOT claim you edited, modified
         cooldown = float(self.settings.get("react_cooldown", 15))
         if now - self._last_tool_react_time < cooldown:
             print(f"[OBSERVER] Tool cooldown active ({cooldown}s) → dropping cluster silently", flush=True)
+            # ── Record suppressed reaction (Point 9: tool cooldown) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="cooldown",
+                        reaction_kind="tool",
+                        semantic=semantic,
+                        significance=max_significance,
+                        trigger_event_seq=None,
+                        trigger_event_type="tool_use",
+                        gate_details={
+                            "cooldown_remaining_ms": int((cooldown - (now - self._last_tool_react_time)) * 1000),
+                            "cooldown_s": cooldown,
+                            "last_tool_react_time": self._last_tool_react_time,
+                            "tools": all_tools,
+                            "tool_args_count": len(all_tool_args),
+                        },
+                    )
+                except Exception:
+                    pass
             return
 
         self._last_any_react_time = now
@@ -3790,6 +4341,22 @@ Respond with ONLY a JSON object:
                     expr = "serious"
                 if self._is_redundant_with_recent_comments(quip["quip"], semantic="prompt"):
                     print(f"[PROMPT-REACT] Skipping repetitive prompt ack: \"{quip['quip']}\"", flush=True)
+                    # ── Record suppressed reaction (Point 15a: redundant_comment — LLM path) ──
+                    if self._recorder and self._recorder._recording:
+                        try:
+                            self._recorder.record_reaction_suppressed(
+                                suppression_reason="redundant_comment",
+                                reaction_kind="prompt",
+                                semantic="prompt",
+                                significance=None,
+                                trigger_event_seq=None,
+                                trigger_event_type="thinking",
+                                gate_details={
+                                    "quip_text": quip["quip"][:80],
+                                },
+                            )
+                        except Exception:
+                            pass
                     return
                 await self._synthesize_and_play(
                     quip["quip"],
@@ -3828,6 +4395,22 @@ Respond with ONLY a JSON object:
             print(f"[PROMPT-REACT] Fallback ack: \"{quip_text}\"", flush=True)
             if self._is_redundant_with_recent_comments(quip_text, semantic="prompt"):
                 print(f"[PROMPT-REACT] Skipping repetitive fallback ack: \"{quip_text}\"", flush=True)
+                # ── Record suppressed reaction (Point 15b: redundant_comment — fallback path) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_reaction_suppressed(
+                            suppression_reason="redundant_comment",
+                            reaction_kind="prompt",
+                            semantic="prompt",
+                            significance=None,
+                            trigger_event_seq=None,
+                            trigger_event_type="thinking",
+                            gate_details={
+                                "quip_text": quip_text[:80],
+                            },
+                        )
+                    except Exception:
+                        pass
                 return
             await self._synthesize_and_play(
                 quip_text,
@@ -3882,6 +4465,23 @@ Respond with ONLY a JSON object:
         quip_expr = quip.get("expression", "looking_down")
         if self._is_redundant_with_recent_comments(quip_text, semantic=semantic or "tool"):
             print(f"[OBSERVER] Skipping repetitive tool quip: \"{quip_text}\"", flush=True)
+            # ── Record suppressed reaction (Point 14: redundant_comment — tool) ──
+            if self._recorder and self._recorder._recording:
+                try:
+                    self._recorder.record_reaction_suppressed(
+                        suppression_reason="redundant_comment",
+                        reaction_kind="tool",
+                        semantic=semantic or "tool",
+                        significance=None,
+                        trigger_event_seq=None,
+                        trigger_event_type="tool_use",
+                        gate_details={
+                            "quip_text": quip_text[:80],
+                            "recent_comment_count": len(self._recent_comment_history),
+                        },
+                    )
+                except Exception:
+                    pass
             return
         print(f"[OBSERVER] Tool quip: \"{quip_text}\"", flush=True)
 
@@ -4045,6 +4645,28 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
                     expr = "normal"
                 quip_text = result.get("quip", "...")
                 self._record_quip(context, quip_text)
+
+                # ── Record full context snapshot (prompt + response) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        self._recorder.record_context_snapshot(
+                            trigger_quip_seq=self._reaction_seq_counter,
+                            reaction_kind=reaction_kind,
+                            brain_system_prompt=system,
+                            user_prompt=context,
+                            quip_history_at_time=list(self._quip_history),
+                            recent_comment_context=continuity or "",
+                            llm_messages_sent=messages,
+                            model_used=selected_model,
+                            provider_used="fast" if fast_cfg else "hermes-api",
+                            godmode_enabled=self._godmode,
+                            temperature=0.6,
+                            max_tokens=150,
+                            raw_llm_response=content or "",
+                        )
+                    except Exception:
+                        pass  # recording is best-effort
+
                 return {"quip": quip_text, "expression": expr}
 
         except asyncio.TimeoutError:
@@ -4167,27 +4789,37 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             wav_bytes = base64.b64decode(audio_b64)
             tmp_path, client_audio_path = self._write_shared_temp_wav(wav_bytes)
             duration_s = None
-            try:
-                self.anim.load_audio(tmp_path)
-                duration_s = self.anim._audio.duration_s if self.anim._audio else None
-                self._cache_last_audio(audio_b64, duration_s)
-                if self.anim._audio:
-                    print(
-                        f"[TTS] Audio loaded: {self.anim._audio.duration_s:.1f}s, {self.anim._audio.total_frames} frames",
-                        flush=True,
-                    )
-            except Exception as e:
-                print(f"[TTS] Audio load failed (lip-sync disabled): {e}", flush=True)
+            # Validate the temp file is a valid RIFF/WAV before feeding to AudioAnalyzer.
+            # When ffmpeg is unavailable, the Edge TTS fallback may write raw MP3 bytes
+            # into the .wav file — wave.open() would crash, so we skip analysis gracefully.
+            if Path(tmp_path).read_bytes()[:4] == b"RIFF":
+                try:
+                    self.anim.load_audio(tmp_path)
+                    duration_s = self.anim._audio.duration_s if self.anim._audio else None
+                    self._cache_last_audio(audio_b64, duration_s)
+                    if self.anim._audio:
+                        print(
+                            f"[TTS] Audio loaded: {self.anim._audio.duration_s:.1f}s, {self.anim._audio.total_frames} frames",
+                            flush=True,
+                        )
+                except Exception as e:
+                    print(f"[TTS] Audio load failed (lip-sync disabled): {e}", flush=True)
+            else:
+                print("[TTS] Audio is not valid WAV (missing RIFF header) — lip-sync disabled (ffmpeg may be unavailable)", flush=True)
 
             await self._broadcast(json.dumps({"type": "status", "status": "playing audio + lip-sync"}))
 
             # Mark this sequence as played before sending audio
             self._last_played_seq = seq
-            await self._broadcast_audio_to_renderers(
-                wav_bytes,
-                duration_s=duration_s,
-                audio_path=client_audio_path,
-            )
+            self._suppress_frames = True
+            try:
+                await self._broadcast_audio_to_renderers(
+                    wav_bytes,
+                    duration_s=duration_s,
+                    audio_path=client_audio_path,
+                )
+            finally:
+                self._suppress_frames = False
             print(f"[TTS] Audio broadcast ({len(wav_bytes)} byte WAV)", flush=True)
 
             if duration_s:
@@ -4211,6 +4843,24 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             accumulated = self._flush_speech_accumulator()
             if accumulated:
                 print(f"[ACCUMULATOR] {len(accumulated)} event(s) flushed after speech", flush=True)
+                # ── Record suppressed reactions (Point 17: accumulator_flushed) ──
+                if self._recorder and self._recorder._recording:
+                    try:
+                        for ev in accumulated:
+                            self._recorder.record_reaction_suppressed(
+                                suppression_reason="accumulator_flushed",
+                                reaction_kind="tool",
+                                semantic=None,
+                                significance=ev.get("significance"),
+                                trigger_event_seq=None,
+                                trigger_event_type="tool_use",
+                                gate_details={
+                                    "tools": ev.get("tools", []),
+                                    "total_accumulated": len(accumulated),
+                                },
+                            )
+                    except Exception:
+                        pass
             if not interrupted:
                 await self._broadcast(json.dumps({"type": "status", "status": "idle"}))
             if tmp_path:
@@ -4342,7 +4992,10 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
         """Main animation loop — updates state and sends frames to all renderers.
         Manages idle expressions: returns to normal after quips, random brief expressions."""
         import random
-        logger.info(f"Animation loop started: {self.anim.fps}fps")
+        if self.anim is None:
+            logger.warning("Animation loop started without animation controller — will wait for compositor")
+        else:
+            logger.info(f"Animation loop started: {self.anim.fps}fps")
 
         # Compute idle expressions for current character
         def get_idle_pool():
@@ -4350,6 +5003,8 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             Idle frames (standalone groups) have a built-in 4x rarity bias
             so they appear much less often than composited expressions.
             Per-frame rarity dicts expand each frame as a separate pool entry."""
+            if self.anim is None or self.anim.compositor is None:
+                return []
             char = self.char_manager.active
             rarity = char.idle_rarity if char else {}
             pool = []
@@ -4384,6 +5039,11 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
 
         while True:
             try:
+                # Guard against None compositor/anim (can happen during character switch)
+                if self.compositor is None or self.anim is None:
+                    await asyncio.sleep(0.1)
+                    continue
+
                 loop_start = time.monotonic()
                 dt = self.anim.frame_interval
 
@@ -4498,6 +5158,8 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
             await asyncio.sleep(delay)
             if not self._diag_disable_observer:
                 await self.observer.start(poll_interval=poll_interval)
+                # Apply current profile filter (respects global characters)
+                self.observer.set_profile_filter(self._get_observer_profile_filter())
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -4534,10 +5196,77 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
         except Exception:
             pass
 
+    def _check_dependencies(self) -> dict:
+        """Verify required and optional Python packages are importable.
+
+        Uses importlib.util.find_spec() — non-invasive, no import-time side effects.
+
+        Returns:
+            {
+                "ok": bool,                # True if all REQUIRED present
+                "required": {"present": [...], "missing": [...]},
+                "optional": {"present": [...], "missing": [...]},
+                "messages": [str, ...],    # Human-readable diagnostic lines
+            }
+        """
+        import importlib.util
+
+        result: dict = {
+            "ok": True,
+            "required": {"present": [], "missing": []},
+            "optional": {"present": [], "missing": []},
+            "messages": [],
+        }
+
+        for import_name, pip_name, category, feature in self._DEPENDENCY_REGISTRY:
+            spec = importlib.util.find_spec(import_name)
+            if spec is not None:
+                result[category.lower()]["present"].append(import_name)
+            else:
+                result[category.lower()]["missing"].append(import_name)
+                if category == "REQUIRED":
+                    result["ok"] = False
+                    msg = (
+                        f"FATAL: '{import_name}' package not found — required for {feature}.\n"
+                        f"       Install: pip install {pip_name}"
+                    )
+                    result["messages"].append(msg)
+                    logger.critical(msg)
+                else:
+                    msg = (
+                        f"WARNING: '{import_name}' package not found — {feature} will be unavailable.\n"
+                        f"         Install: pip install {pip_name}"
+                    )
+                    result["messages"].append(msg)
+                    logger.warning(msg)
+
+        return result
+
     async def start(self):
         """Start the server, observer, and animation loop."""
         logger.info(f"Starting server on ws://{self.host}:{self.ws_port}")
         self._clear_ready()
+
+        # ── Dependency validation ───────────────────────────────
+        dep_check = self._check_dependencies()
+        print("[DEPS] Dependency check:", flush=True)
+        for msg in dep_check["messages"]:
+            print(msg, flush=True)
+        if not dep_check["ok"]:
+            logger.critical(
+                "Required dependencies missing — server cannot start. "
+                "Install missing packages and retry."
+            )
+            print("\n[DEPS] SERVER STARTUP ABORTED — missing required packages.\n", flush=True)
+            sys.exit(1)
+        if dep_check["optional"]["missing"]:
+            print(
+                f"[DEPS] {len(dep_check['optional']['missing'])} optional package(s) missing "
+                f"— some features degraded (see warnings above).",
+                flush=True,
+            )
+        print("[DEPS] Dependency check complete.\n", flush=True)
+        # ─────────────────────────────────────────────────────────
 
         # Check Hermes API connectivity
         await self._check_hermes_api()
@@ -4563,14 +5292,33 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
                     self._observer_task = asyncio.create_task(
                         self._start_observer_deferred(poll_interval=1.0, delay=1.0)
                     )
+                # ─── Start recorder if enabled ──────────────────────────
+                if self.settings.get("recording_enabled", False):
+                    try:
+                        self._recorder = CompanionRecorder(self)
+                        self._recorder.start(reason="auto")
+                    except Exception as exc:
+                        logger.warning(f"Recorder start failed: {exc}")
                 await asyncio.Future()
         finally:
             self._clear_ready()
+            # ─── Stop recorder if active ───────────────────────────────
+            if self._recorder:
+                try:
+                    self._recorder.stop(reason="shutdown")
+                except Exception:
+                    pass
 
     async def _check_hermes_api(self):
         """Verify the Hermes API server is reachable. Log a clear warning if not."""
         try:
             import aiohttp
+        except ModuleNotFoundError:
+            print("[HERMES] Cannot check API — aiohttp package is missing.", flush=True)
+            print("[HERMES]   Install: pip install aiohttp", flush=True)
+            return
+
+        try:
             timeout = aiohttp.ClientTimeout(total=5)
             test_url = f"{self._hermes_api_url}/models"
             headers = {}
@@ -4584,7 +5332,7 @@ VARY SENTENCE STRUCTURE — don't start every quip with "I'm [verb]ing…" or "I
                     else:
                         print(f"[HERMES] API server returned {resp.status} — check config", flush=True)
         except Exception as e:
-            pass
+            print(f"[HERMES] API check failed: {e}", flush=True)
 
         print("=" * 60, flush=True)
         print("[HERMES] WARNING: API server NOT reachable!", flush=True)
@@ -4609,6 +5357,7 @@ if __name__ == "__main__":
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
     parser.add_argument("--fps", type=int, default=30, help="Animation FPS")
+    parser.add_argument("--record", action="store_true", help="Enable event recording")
     args = parser.parse_args()
 
     server = CompanionServer(
@@ -4618,4 +5367,6 @@ if __name__ == "__main__":
         fps=args.fps,
         hermes_home=args.hermes_home,
     )
+    if args.record:
+        server.settings["recording_enabled"] = True
     server.run()

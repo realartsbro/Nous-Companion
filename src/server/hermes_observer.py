@@ -76,6 +76,9 @@ class HermesObserver:
         self._session_switch_cooldown: float = 3.0  # seconds
         self._last_session_switch_time: float = time.time()  # wall-clock, NOT file mtime
 
+        # Profile filter — restricts auto-follow to sessions matching this profile
+        self._profile_filter: Optional[str] = None
+
         # Ended-session cache (from state.db) — refreshed on demand
         self._ended_session_ids: set[str] = set()
         self._ended_cache_time: float = 0
@@ -93,6 +96,15 @@ class HermesObserver:
         # listening. The background poll loop will discover the active session
         # shortly after start without blocking the app bootstrap path.
         self._last_session_switch_time = 0.0
+
+    def set_profile_filter(self, profile_name: Optional[str]) -> None:
+        """Restrict auto-follow to sessions matching this profile.
+
+        When set, the observer will only consider sessions whose
+        profile_name matches this value. Set to None to disable
+        filtering (observe all profiles).
+        """
+        self._profile_filter = profile_name
 
     @staticmethod
     def _infer_profile_from_path(session_path: Path) -> str:
@@ -241,6 +253,8 @@ class HermesObserver:
         seen_names: set[str] = set()
 
         session_files: list[tuple[Path, os.stat_result]] = []
+
+        # 1. Root sessions dir
         for session_file in self.sessions_dir.glob("session_*.json"):
             if session_file.name.startswith("session_api-"):
                 continue
@@ -249,6 +263,39 @@ class HermesObserver:
             except OSError:
                 continue
             session_files.append((session_file, stat))
+
+        # 2. Profile-specific sessions dirs
+        profiles_dir = self.hermes_home / "profiles"
+        if profiles_dir.exists():
+            for pdir in profiles_dir.iterdir():
+                if not pdir.is_dir():
+                    continue
+                profile_sessions = pdir / "sessions"
+                if not profile_sessions.exists():
+                    continue
+                for session_file in profile_sessions.glob("session_*.json"):
+                    if session_file.name.startswith("session_api-"):
+                        continue
+                    try:
+                        stat = session_file.stat()
+                    except OSError:
+                        continue
+                    session_files.append((session_file, stat))
+
+        # Deduplicate by filename — root dir wins
+        seen_filenames: dict[str, tuple[Path, os.stat_result]] = {}
+        for session_file, stat in session_files:
+            name = session_file.name
+            if name in seen_filenames:
+                # Keep the root-dir entry (not under profiles/)
+                existing = seen_filenames[name][0]
+                if "profiles" in str(existing).split(os.sep):
+                    # Replace profile-dir entry with root-dir entry if new one is root
+                    if "profiles" not in str(session_file).split(os.sep):
+                        seen_filenames[name] = (session_file, stat)
+            else:
+                seen_filenames[name] = (session_file, stat)
+        session_files = list(seen_filenames.values())
 
         session_files.sort(key=lambda item: item[1].st_mtime, reverse=True)
 
@@ -529,6 +576,11 @@ class HermesObserver:
         """Find the most recently modified session file (excluding API call sessions
         and companion-internal quip-generation sessions)."""
         inventory = [r for r in self._get_session_inventory() if not r["is_companion"] and not r["is_ended"] and not r.get("is_curator")]
+
+        # Apply profile filter if set
+        if self._profile_filter:
+            inventory = [r for r in inventory if r.get("profile_name") == self._profile_filter]
+
         now = time.time()
         max_mtime = max((record["effective_mtime"] for record in inventory), default=0.0)
         cutoff = (max_mtime - LIVE_SESSION_CUTOFF_S) if max_mtime else now - LIVE_SESSION_CUTOFF_S
@@ -622,6 +674,11 @@ class HermesObserver:
                     self._find_active_session()
         else:
             inventory = [r for r in all_inventory if not r["is_companion"] and not r["is_ended"]]
+
+            # Apply profile filter if set
+            if self._profile_filter:
+                inventory = [r for r in inventory if r.get("profile_name") == self._profile_filter]
+
             if not inventory:
                 self._trace_poll("[POLL] No session files found")
                 return

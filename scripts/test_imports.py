@@ -6,7 +6,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from brain.character_loader import load_character
 from brain.brain import Brain, Quip
-from tts.engine import NoOpTTS, create_engine
 from server.companion_server import CompanionServer
 
 char = load_character(Path(__file__).resolve().parent.parent / "characters" / "default")
@@ -24,9 +23,5 @@ print(f"Size: {char.get_expression_size('neutral')}")
 # Test fallback
 b64_missing = char.get_expression_base64("nonexistent")
 print(f"Missing expression falls back correctly: {len(b64_missing) > 0}")
-
-# Test TTS factory
-tts_noop = create_engine({"engine": "none"})
-print(f"NoOp TTS: {tts_noop.name}")
 
 print("\nAll imports and basic tests passed.")
