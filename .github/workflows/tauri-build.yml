@@ -17,10 +17,13 @@ jobs:
         include:
           - os: windows-latest
             artifact_name: nous-companion-windows
+            bundle_pattern: "bundle/msi/*.msi"
           - os: macos-latest
             artifact_name: nous-companion-macos
+            bundle_pattern: "bundle/dmg/*.dmg"
           - os: ubuntu-22.04
             artifact_name: nous-companion-linux
+            bundle_pattern: "bundle/appimage/*.AppImage"
 
     runs-on: ${{ matrix.os }}
 
@@ -69,7 +72,7 @@ jobs:
           name: ${{ matrix.artifact_name }}
           if-no-files-found: error
           path: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/${{ matrix.bundle_pattern }}
             src-tauri/target/release/nous-companion*
             src-tauri/target/release/launch-portable.bat
             src-tauri/target/release/characters/
