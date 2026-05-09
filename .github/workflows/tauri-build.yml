@@ -57,7 +57,6 @@ jobs:
           cp -r ../src/server target/release/src/
           cp -r ../src/brain target/release/src/
           cp -r ../src/compositor target/release/src/
-          cp -r ../src/tts target/release/src/
           cp -r ../src/hermes_runtime.py target/release/src/
           cp ../requirements.txt target/release/
           cp ../scripts/launch-portable.bat target/release/
